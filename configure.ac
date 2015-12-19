@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT(cplus2asp, 2.0, jbabb1@asu.edu)
+AC_INIT(cplus2asp, 4.0, samidh.talsania@asu.edu)
 AC_CONFIG_SRCDIR([src/cplus2asp/utils.cpp])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([build-scripts])
@@ -16,7 +16,8 @@ AC_SUBST([PROJECT_ROOT],`pwd`)
 AC_CONFIG_FILES([Makefile
 	src/cplus2asp.bin/Makefile
 	src/bcbridge/Makefile
-	src/cplus2asp/Makefile])
+	src/cplus2asp/Makefile
+	src/clingo3to4/Makefile])
 
 AC_CHECK_FILE(
 	[externals/as2transition/configure.ac],
@@ -114,7 +115,8 @@ BOOST_FILESYSTEM([$rt_type])					# Required by cplus2asp
 BOOST_FUNCTION([$rt_type])						# Required by acplusbridge
 BOOST_IOSTREAMS([$rt_type])						# Required by cplus2asp						
 BOOST_THREADS([$rt_type])						# Required by acplusbridge
-
+BOOST_REGEX([$rt_type])							# Required by clingo3to4
+BOOST_PROGRAM_OPTIONS([$rt_type])				# Required by clingo3to4
 
 # Static linking appears to be problematic with the boost timers.
 if [ test "x$portable" != x"true" ]
@@ -140,20 +142,21 @@ AC_CHECK_LIB(rt, clock_gettime,[],[AC_MSG_ERROR([Could not find librt, which is 
 
 
 
-AC_PATH_PROG([ICLINGO],[iclingo],[false])
-AC_PATH_PROG([OCLINGO],[oclingo],[false])
+#AC_PATH_PROG([ICLINGO],[iclingo],[false])
+#AC_PATH_PROG([OCLINGO],[oclingo],[false])
 AC_PATH_PROG([CLINGO], [clingo], [false])
 AC_PATH_PROG([F2LP],   [f2lp], 	 [false])
+AC_PATH_PROG([CLINGO3TO4], [clingo3to4], [false])
 
-if [ test x"$ICLINGO" == x"false" ]
-then
-	AC_MSG_WARN([Could not find iclingo which is required for the normal operation of cplus2asp. Please install iclingo from http://potassco.sourceforge.net before continuing.])
-fi
+#if [ test x"$ICLINGO" == x"false" ]
+#then
+#	AC_MSG_WARN([Could not find iclingo which is required for the normal operation of cplus2asp. Please install iclingo from http://potassco.sourceforge.net before continuing.])
+#fi
 
-if [ test x"$OCLINGO" == x"false" ]
-then
-	AC_MSG_WARN([Could not find oclingo which is required for using the reactive features of cplus2asp. Please install oclingo from http://potassco.sourceforge.net before attempting to use these features.])
-fi
+#if [ test x"$OCLINGO" == x"false" ]
+#then
+#	AC_MSG_WARN([Could not find oclingo which is required for using the reactive features of cplus2asp. Please install oclingo from http://potassco.sourceforge.net before attempting to use these features.])
+#fi
 
 if [ test x"$CLINGO" == x"false" ]
 then
@@ -165,6 +168,10 @@ then
 	AC_MSG_WARN([Could not find f2lp which is required for the normal operation of cplus2asp. Please install f2lp from http://reasoning.eas.asu.edu/f2lp before continuing.])
 fi
 
+if [ test x"$CLINGO3TO4" == x"false" ]
+then
+	AC_MSG_WARN([Could not find clingo3to4 which is required for the normal operation of cplus2asp. Please install f2lp from http://reasoning.eas.asu.edu/f2lp before continuing.])
+fi
 
 # Checks for libraries.
 

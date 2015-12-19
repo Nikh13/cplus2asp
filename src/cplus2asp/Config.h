@@ -60,23 +60,23 @@
 #define DEF_TRANS_CMD						"cplus2asp3.bin"					///< Default translator command.
 #define DEF_PREPROC_CMD						"f2lp"								///< Default preprocessor command.
 #define DEF_GRD_CMD							""									///< Default grounder command.
-#define DEF_SO_CMD							"iclingo"							///< Default solver command.
+#define DEF_SO_CMD							"clingo"							///< Default solver command.
 #define DEF_POSTPROC_CMD					"as2transition"						///< Default postprocessor command.
 #define DEF_REACTIVE_BRIDGE_CMD				"bcbridge"							///< Default reactive client command. TODO
 
 #define DEF_GRD_REACTIVE_CMD				""									///< The default grounder to use in reactive mode.
-#define DEF_SO_REACTIVE_CMD					"oclingo"							///< The default solver to use in reactive mode.
+#define DEF_SO_REACTIVE_CMD					"clingo"							///< The default solver to use in reactive mode.
 
 #define DEF_GRD_STATIC_CMD 					""									///< The default grounder to use in static mode.
 #define DEF_SO_STATIC_CMD 					"clingo"							///< The default solver to use in static mode.
 
-#define DEF_SO_INCREMENTAL_CMD				"iclingo"							///< The default solver to use in incremental mode.
+#define DEF_SO_INCREMENTAL_CMD				"clingo"							///< The default solver to use in incremental mode.
 #define DEF_GRD_INCREMENTAL_CMD				""									///< The default grounder to use in incremental mode.
 
 // Default command options
 #define DEF_TRANS_OPTS						""									///< Default translator options.
 #define DEF_PREPROC_OPTS					""									///< Default preprocessor options.
-#define DEF_GRD_OPTS						""									///< Default grounder options.
+// #define DEF_GRD_OPTS						""									///< Default grounder options.
 #define DEF_SO_OPTS							""									///< Default solver options.
 #define DEF_GRSO_OPTS						""									///< Default grounder/solver options.
 #define DEF_POSTPROC_OPTS					""									///< Default postprocessor options.
@@ -123,13 +123,13 @@ public:
 
 		TC_TRANSLATOR = 0x00,					///< translator
 		TC_PREPROC = 0x01,						///< pre-processor
-		TC_GROUNDER = 0x02,						///< grounder
-		TC_SOLVER = 0x03,						///< solver
-		TC_POSTPROC = 0x04,						///< post-processor. Ignored in reactive mode.
-		TC_REACTIVE_BRIDGE = 0x05,				///< The process to launch which interacts with a reactive solver.
+		// TC_GROUNDER = 0x02,						///< grounder
+		TC_SOLVER = 0x02,						///< solver
+		TC_POSTPROC = 0x03,						///< post-processor. Ignored in reactive mode.
+		TC_REACTIVE_BRIDGE = 0x04,				///< The process to launch which interacts with a reactive solver.
 
-		_TC_END_ = 0x06,						///< Dummy constant to provide the end of the toolchain command list.
-		_TC_LENGTH_ = 0x06						///< (Not a tool) Provides the total length of the toolchain command.
+		_TC_END_ = 0x05,						///< Dummy constant to provide the end of the toolchain command list.
+		_TC_LENGTH_ = 0x05						///< (Not a tool) Provides the total length of the toolchain command.
 	};
 
 	/// The various operating modes that we can use.
@@ -184,7 +184,7 @@ public:
 		_STR_TC_BEGIN_ = 0,										///< psuedo option marking the toolchain beginning.
 		STR_TRANSLATOR = TC_TRANSLATOR,							///< translator
 		STR_PREPROC = TC_PREPROC,								///< pre-processor
-		STR_GROUNDER = TC_GROUNDER,								///< grounder
+		// STR_GROUNDER = TC_GROUNDER,								///< grounder
 		STR_SOLVER = TC_SOLVER,									///< solver
 		STR_POSTPROC = TC_POSTPROC,								///< post-processor. Ignored in reactive mode.
 		STR_REACTIVE_BRIDGE = TC_REACTIVE_BRIDGE,				///< The process to launch which interacts with a reactive solver.
@@ -194,7 +194,7 @@ public:
 		_STR_TC_OPT_BEGIN_ = STR_REACTIVE_BRIDGE + 1,			///< psuedo string option marking the toolchain options beginning
 		STR_OPT_TRANSLATOR = _STR_TC_OPT_BEGIN_ + TC_TRANSLATOR,
 		STR_OPT_PREPROC = _STR_TC_OPT_BEGIN_ + TC_PREPROC,
-		STR_OPT_GROUNDER = _STR_TC_OPT_BEGIN_ + TC_GROUNDER,
+		// STR_OPT_GROUNDER = _STR_TC_OPT_BEGIN_ + TC_GROUNDER,
 		STR_OPT_SOLVER = _STR_TC_OPT_BEGIN_ + TC_SOLVER,
 		STR_OPT_POSTPROC = _STR_TC_OPT_BEGIN_ + TC_POSTPROC,
 		STR_OPT_REACTIVE_BRIDGE = _STR_TC_OPT_BEGIN_ + TC_REACTIVE_BRIDGE,
@@ -205,7 +205,7 @@ public:
 		_STR_TC_OUT_BEGIN_ = STR_OPT_REACTIVE_BRIDGE+1,				///< psuedo string option marking the toolchain output files beginning
 		STR_OUT_TRANSLATOR = _STR_TC_OUT_BEGIN_ + TC_TRANSLATOR,
 		STR_OUT_PREPROC = _STR_TC_OUT_BEGIN_ + TC_PREPROC,
-		STR_OUT_GROUNDER = _STR_TC_OUT_BEGIN_ + TC_GROUNDER,
+		// STR_OUT_GROUNDER = _STR_TC_OUT_BEGIN_ + TC_GROUNDER,
 		STR_OUT_SOLVER = _STR_TC_OUT_BEGIN_ + TC_SOLVER,
 		STR_OUT_POSTPROC = _STR_TC_OUT_BEGIN_ + TC_POSTPROC,
 		STR_OUT_REACTIVE_BRIDGE = _STR_TC_OUT_BEGIN_ + TC_REACTIVE_BRIDGE,

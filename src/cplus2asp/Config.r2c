@@ -95,18 +95,18 @@ Config::Config(std::string const& name) {
 
 	command(TC_TRANSLATOR,DEF_TRANS_CMD);
 	command(TC_PREPROC,DEF_PREPROC_CMD);
-	command(TC_GROUNDER,DEF_GRD_CMD);
+	// command(TC_GROUNDER,DEF_GRD_CMD);
 	command(TC_SOLVER,DEF_SO_CMD);
 	command(TC_POSTPROC,DEF_POSTPROC_CMD);
 	command(TC_REACTIVE_BRIDGE,DEF_REACTIVE_BRIDGE_CMD);
 	
 	memset(mRun,1,_TC_LENGTH_);
-	mRun[TC_GROUNDER] = false;
+	// mRun[TC_GROUNDER] = false;
 	memset(mCustomRun,0,_TC_LENGTH_);
 
 	opts(TC_TRANSLATOR,DEF_TRANS_OPTS);
 	opts(TC_PREPROC,DEF_PREPROC_OPTS);
-	opts(TC_GROUNDER,DEF_GRD_OPTS);
+	// opts(TC_GROUNDER,DEF_GRD_OPTS);
 	opts(TC_SOLVER,DEF_SO_OPTS);
 	opts(TC_POSTPROC,DEF_POSTPROC_OPTS);
 	opts(TC_REACTIVE_BRIDGE,DEF_REACTIVE_BRIDGE_OPTS);
@@ -155,15 +155,15 @@ bool Config::mode(Mode newMode) {
 	switch (newMode) {
 	case MODE_STATIC_AUTO:
 	case MODE_STATIC_MANUAL:
-		if (!customCmd(TC_GROUNDER)) mStrOpts[TC_GROUNDER + _STR_TC_BEGIN_] = DEF_GRD_STATIC_CMD;
+		// if (!customCmd(TC_GROUNDER)) mStrOpts[TC_GROUNDER + _STR_TC_BEGIN_] = DEF_GRD_STATIC_CMD;
 		if (!customCmd(TC_SOLVER)) mStrOpts[TC_SOLVER + _STR_TC_BEGIN_] = DEF_SO_STATIC_CMD;
 		break;
 	case MODE_INCREMENTAL:
-		if (!customCmd(TC_GROUNDER)) mStrOpts[TC_GROUNDER + _STR_TC_BEGIN_] = DEF_GRD_INCREMENTAL_CMD;
+		// if (!customCmd(TC_GROUNDER)) mStrOpts[TC_GROUNDER + _STR_TC_BEGIN_] = DEF_GRD_INCREMENTAL_CMD;
 		if (!customCmd(TC_SOLVER)) mStrOpts[TC_SOLVER + _STR_TC_BEGIN_] = DEF_SO_INCREMENTAL_CMD;
 		break;
 	case MODE_REACTIVE:
-		if (!customCmd(TC_GROUNDER)) mStrOpts[TC_GROUNDER + _STR_TC_BEGIN_] = DEF_GRD_REACTIVE_CMD;
+		// if (!customCmd(TC_GROUNDER)) mStrOpts[TC_GROUNDER + _STR_TC_BEGIN_] = DEF_GRD_REACTIVE_CMD;
 		if (!customCmd(TC_POSTPROC)) mRun[TC_POSTPROC] = false;
 		if (!customCmd(TC_SOLVER)) mStrOpts[TC_SOLVER + _STR_TC_BEGIN_] = DEF_SO_REACTIVE_CMD;
 		break;
@@ -336,10 +336,6 @@ size_t Config::cumulativeInputCount(Toolchain tool) const {
 	switch (tool) {
 	case _TC_END_:
 	case TC_REACTIVE_BRIDGE:
-		// Reactive bridge is different.
-//		if (run(TC_TRANSLATOR)) {
-//			count++;
-//		}
 		break;
 
 	case TC_POSTPROC:
@@ -350,17 +346,21 @@ size_t Config::cumulativeInputCount(Toolchain tool) const {
 		/* no break */
 
 	case TC_SOLVER:
-		if (run(TC_GROUNDER)) {
-			count++;
-			break;
-		}
+		// if (run(TC_GROUNDER)) {
+		// 	count++;
+		// 	break;
+		// }
+		if (run(TC_PREPROC)) {
+				count++;
+				break;
+			}
 		/* no break */
 
-	case TC_GROUNDER:
-		if (run(TC_PREPROC)) {
-			count++;
-			break;
-		}
+	// case TC_GROUNDER:
+	// 	if (run(TC_PREPROC)) {
+	// 		count++;
+	// 		break;
+	// 	}
 		/* no break */
 
 	case TC_PREPROC:
@@ -490,8 +490,31 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 			arglist.push_back(utils::to_string(intConfigOpt(OPT_NUM_SOLN)));
 		}
 
+		if (subconfig) {
+			if (subconfig->query != "") arglist.push_back("-c query=q_" +subconfig->query);
+			if (subconfig->maxstep != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(subconfig->maxstep));
+			if (subconfig->minstep != UNDEFINED) arglist.push_back("-c minstep=" + utils::to_string(subconfig->minstep));
+		} else {
+			if (strOpt(STR_QUERY) != "") arglist.push_back("-c query=q_" + utils::to_string(strOpt(STR_QUERY)));
+			if (intConfigOpt(OPT_MAXSTEP) != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(intConfigOpt(OPT_MAXSTEP)));
+			if (intConfigOpt(OPT_MINSTEP) != UNDEFINED) arglist.push_back("-c minstep=" + utils::to_string(intConfigOpt(OPT_MINSTEP)));
+		}
+
+
+		if (intConfigOpt(OPT_MAXADDITIVE) != UNDEFINED) arglist.push_back("-c maxAdditive=" + utils::to_string(intConfigOpt(OPT_MAXADDITIVE)));
+		if (strOpt(STR_NONE_ALIAS) != "") arglist.push_back("-c none=" + strOpt(STR_NONE_ALIAS));
+
+		// The '--shift' flag signals that gringo should shift disjunction into the body of a rule.
+		if (boolConfigOpt(OPT_SHIFT)) arglist.push_back("--shift");
+
+
+		for (ConstantMap::const_iterator it = beginConstants(); it != endConstants(); it++) {
+			arglist.push_back("-c");
+			arglist.push_back(it->first + "=" + it->second);
+		}
+
 		// special constants (if we're running what looks like a grounder/solver)
-		if (!run(TC_GROUNDER)) {
+		if (!run(TC_PREPROC)) {
 			if (subconfig) {
 				if (subconfig->query != "") arglist.push_back("-c query=q_" +subconfig->query);
 				if (subconfig->maxstep != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(subconfig->maxstep));
@@ -558,32 +581,32 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 			
 
 		break;
-	case TC_GROUNDER:
-		compileInputArgs(tool, arglist);
+	// case TC_GROUNDER:
+	// 	compileInputArgs(tool, arglist);
 
-		if (subconfig) {
-			if (subconfig->query != "") arglist.push_back("-c query=q_" +subconfig->query);
-			if (subconfig->maxstep != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(subconfig->maxstep));
-			if (subconfig->minstep != UNDEFINED) arglist.push_back("-c minstep=" + utils::to_string(subconfig->minstep));
-		} else {
-			if (strOpt(STR_QUERY) != "") arglist.push_back("-c query=q_" + utils::to_string(strOpt(STR_QUERY)));
-			if (intConfigOpt(OPT_MAXSTEP) != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(intConfigOpt(OPT_MAXSTEP)));
-			if (intConfigOpt(OPT_MINSTEP) != UNDEFINED) arglist.push_back("-c minstep=" + utils::to_string(intConfigOpt(OPT_MINSTEP)));
-		}
-
-
-		if (intConfigOpt(OPT_MAXADDITIVE) != UNDEFINED) arglist.push_back("-c maxAdditive=" + utils::to_string(intConfigOpt(OPT_MAXADDITIVE)));
-		if (strOpt(STR_NONE_ALIAS) != "") arglist.push_back("-c none=" + strOpt(STR_NONE_ALIAS));
-
-		// The '--shift' flag signals that gringo should shift disjunction into the body of a rule.
-		if (boolConfigOpt(OPT_SHIFT)) arglist.push_back("--shift");
+	// 	if (subconfig) {
+	// 		if (subconfig->query != "") arglist.push_back("-c query=q_" +subconfig->query);
+	// 		if (subconfig->maxstep != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(subconfig->maxstep));
+	// 		if (subconfig->minstep != UNDEFINED) arglist.push_back("-c minstep=" + utils::to_string(subconfig->minstep));
+	// 	} else {
+	// 		if (strOpt(STR_QUERY) != "") arglist.push_back("-c query=q_" + utils::to_string(strOpt(STR_QUERY)));
+	// 		if (intConfigOpt(OPT_MAXSTEP) != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(intConfigOpt(OPT_MAXSTEP)));
+	// 		if (intConfigOpt(OPT_MINSTEP) != UNDEFINED) arglist.push_back("-c minstep=" + utils::to_string(intConfigOpt(OPT_MINSTEP)));
+	// 	}
 
 
-		for (ConstantMap::const_iterator it = beginConstants(); it != endConstants(); it++) {
-			arglist.push_back("-c");
-			arglist.push_back(it->first + "=" + it->second);
-		}
-		break;
+	// 	if (intConfigOpt(OPT_MAXADDITIVE) != UNDEFINED) arglist.push_back("-c maxAdditive=" + utils::to_string(intConfigOpt(OPT_MAXADDITIVE)));
+	// 	if (strOpt(STR_NONE_ALIAS) != "") arglist.push_back("-c none=" + strOpt(STR_NONE_ALIAS));
+
+	// 	// The '--shift' flag signals that gringo should shift disjunction into the body of a rule.
+	// 	if (boolConfigOpt(OPT_SHIFT)) arglist.push_back("--shift");
+
+
+	// 	for (ConstantMap::const_iterator it = beginConstants(); it != endConstants(); it++) {
+	// 		arglist.push_back("-c");
+	// 		arglist.push_back(it->first + "=" + it->second);
+	// 	}
+	// 	break;
 
 	case TC_REACTIVE_BRIDGE:
 #ifdef NO_REACTIVE_BRIDGE
@@ -617,10 +640,6 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 // Sets the configuration to run up to (and including) the provided tool.
 bool Config::setRunTo(Toolchain tool) {
 	bool conflict = false;
-
-//	for (int i = (int)_TC_BEGIN_; i < (int)tool+1; i++) {
-//		conflict |= run((Toolchain)i, true);
-//	}
 	for (int i = ((int)tool)+1; i < (int)_TC_END_; i++) {
 		conflict |= run((Toolchain)i, false);
 	}
@@ -768,17 +787,17 @@ void Config::compileInputArgs(Toolchain tool, std::list<std::string>& args) cons
 		/* no break */
 
 	case TC_SOLVER:
-		if (run(TC_GROUNDER)) {
-			args.push_back(output(TC_GROUNDER));
-			break;
-		}
-		/* no break */
-
-	case TC_GROUNDER:
 		if (run(TC_PREPROC)) {
 			args.push_back(output(TC_PREPROC));
 			break;
 		}
+		/* no break */
+
+	// case TC_GROUNDER:
+	// 	if (run(TC_PREPROC)) {
+	// 		args.push_back(output(TC_PREPROC));
+	// 		break;
+	// 	}
 		/* no break */
 
 	case TC_PREPROC:
@@ -849,14 +868,7 @@ Config::FileType& Config::checkExtension(char const* ext, FileType& out) const {
 		[ao]"f2lp"					{ out.tool = TC_PREPROC; out.runningMode = MODE_REACTIVE; return out;}
 		"if2lp"						{ out.tool = TC_PREPROC; out.runningMode = MODE_INCREMENTAL; return out;}
 
-		"lp"						{ out.tool = TC_GROUNDER; out.runningMode = MODE_STATIC_AUTO | MODE_STATIC_MANUAL; return out;}
-		[ao]"lp"					{ out.tool = TC_GROUNDER; out.runningMode = MODE_REACTIVE; return out;}
-		"ilp"						{ out.tool = TC_GROUNDER; out.runningMode = MODE_INCREMENTAL; return out;}
-
-		"asp"						{ out.tool = TC_GROUNDER; out.runningMode = MODE_STATIC_AUTO | MODE_STATIC_MANUAL; return out;}
-		[ao]"asp"					{ out.tool = TC_GROUNDER; out.runningMode = MODE_REACTIVE; return out;}
-		"iasp"						{ out.tool = TC_GROUNDER; out.runningMode = MODE_INCREMENTAL; return out;}
-
+		
 		"grd"						{ out.tool = TC_SOLVER; out.runningMode = MODE_STATIC_AUTO | MODE_STATIC_MANUAL; return out;}
 		[ao]"grd"					{ out.tool = TC_SOLVER; out.runningMode = MODE_REACTIVE; return out;}
 		"igrd"						{ out.tool = TC_SOLVER; out.runningMode = MODE_INCREMENTAL; return out;}

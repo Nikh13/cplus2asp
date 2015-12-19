@@ -166,11 +166,11 @@ void error(char const* fmt, bool newline, unsigned char exitCode, ...);
  * @param ... Additional parameters for the format.
  */
 
-#ifdef DEBUG
+// #ifdef DEBUG
 void debug(char const* fmt, bool newline, ...);
-#else
-inline void debug(char const* fmt, bool newline, ...) { /* Intentionally left blank */ }
-#endif
+// #else
+// // inline void debug(char const* fmt, bool newline, ...) { /* Intentionally left blank */ }
+// #endif
 };
 
 #endif /* UTILS_H_ */

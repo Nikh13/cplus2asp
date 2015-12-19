@@ -37,6 +37,8 @@
 
 #include "utils.h"
 
+
+
 namespace utils {
 
 bool isInteger(const char *str)
@@ -140,7 +142,7 @@ void error(char const* fmt, bool newline, unsigned char exitCode, ...) {
 	   if (exitCode) exit(exitCode);
 }
 
-#ifdef DEBUG
+
 void debug(char const* fmt, bool newline, ...) {
 
 	   va_list arg;
@@ -156,5 +158,5 @@ void debug(char const* fmt, bool newline, ...) {
 }
 
 
-#endif
+
 };

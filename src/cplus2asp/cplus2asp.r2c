@@ -105,6 +105,8 @@ namespace sy = bcplus::symbols;
   #define PATH_MAX 4096
 #endif
 
+
+
 /// An enum of the various command line options available.
 enum Option {
 	OPT_AUTO,
@@ -113,7 +115,7 @@ enum Option {
 	OPT_BRIDGE_OUT,
 	OPT_CONST,
 	OPT_FRM_BRIDGE,
-	OPT_FRM_GRD,
+	// OPT_FRM_GRD,
 	OPT_FRM_PRE,
 	OPT_FRM_POST,
 	OPT_FROM_SO,
@@ -433,7 +435,7 @@ int main(int argc, char** argv)
 		// It Ran!
 		ran[Config::TC_PREPROC] = true;
 
-		if (!config.run(Config::TC_GROUNDER) && !config.run(Config::TC_SOLVER)) {
+		if (!config.run(Config::TC_SOLVER)) {
 			if (!echoFile(std::cout, config.output(Config::TC_PREPROC))) {
 				utils::error("Unable to read from the pre-processor output file '%s'", true, -1, config.output(Config::TC_PREPROC).c_str());
 			}
@@ -462,8 +464,7 @@ int main(int argc, char** argv)
 	u::ref_ptr<sy::SymbolTable> symtab = new sy::SymbolTable(bcpconf);
 
 	// Load queries from the symbol table...
-	for(sy::SymbolTable::const_iterator it = symtab->begin(sy::Symbol::Type::QUERY);
-		it != symtab->end(sy::Symbol::Type::QUERY); it++) {
+	for(sy::SymbolTable::const_iterator it = symtab->begin(sy::Symbol::Type::QUERY);it != symtab->end(sy::Symbol::Type::QUERY); it++) {
 	
 		sy::QuerySymbol const* q = (sy::QuerySymbol const*)(it->get());
 
@@ -506,7 +507,7 @@ int main(int argc, char** argv)
 	// If any of the "critical" constants aren't defined and one of the
 	// "active" tool chain programs is going to need the constants, try
 	// finding "hint" comments in the input that we can use to fill in details.
-	if (config.run(Config::TC_GROUNDER) || config.run(Config::TC_SOLVER)) {
+	if (config.run(Config::TC_SOLVER)) {
 
 		// If all else fails, ask the user (unless we're not allowed to).
 		unsigned int tmpVal = Config::UNDEFINED;
@@ -582,7 +583,7 @@ int main(int argc, char** argv)
 		/********************************************************************************************/
 
 		// Query
-		if ((config.run(Config::TC_GROUNDER) || config.run(Config::TC_SOLVER))
+		if (config.run(Config::TC_SOLVER)
 				&& (config.strOpt(Config::STR_QUERY) == ""
 						|| config.intConfigOpt(Config::OPT_MINSTEP) == Config::UNDEFINED
 						|| config.intConfigOpt(Config::OPT_MAXSTEP) == Config::UNDEFINED)){
@@ -667,24 +668,24 @@ int main(int argc, char** argv)
 			/*********************************************************************************************/
 			/* Grounder */
 			/*********************************************************************************************/
-			utils::debug("Entering grounder subroutine.", true);
-			if ((intSystemResult = runTool(config, Config::TC_GROUNDER, "grounder", &runConfig)) != TC_STAT_TOOLSKIPPED)  {
-				// It Ran!
-				ran[Config::TC_GROUNDER] = true;
-				if (!config.run(Config::TC_SOLVER)) {
-					if (!echoFile(std::cout, config.output(Config::TC_GROUNDER))) {
-						utils::error("Unable to read from the grounder output file '%s'", true, -1, config.output(Config::TC_GROUNDER).c_str());
-					}
-				}
+			// utils::debug("Entering grounder subroutine.", true);
+			// if ((intSystemResult = runTool(config, Config::TC_GROUNDER, "grounder", &runConfig)) != TC_STAT_TOOLSKIPPED)  {
+			// 	// It Ran!
+			// 	ran[Config::TC_GROUNDER] = true;
+			// 	if (!config.run(Config::TC_SOLVER)) {
+			// 		if (!echoFile(std::cout, config.output(Config::TC_GROUNDER))) {
+			// 			utils::error("Unable to read from the grounder output file '%s'", true, -1, config.output(Config::TC_GROUNDER).c_str());
+			// 		}
+			// 	}
 
-				// check the status and make sure all is well...
-				if(intSystemResult != TC_STAT_OK)
-				{
-					cleanup(config, ran);
-					utils::error("An error occurred while executing the grounder.",true, utils::EXT_CODE_TOOLCHAIN_GROUNDER_ERR);
-				}
+			// 	// check the status and make sure all is well...
+			// 	if(intSystemResult != TC_STAT_OK)
+			// 	{
+			// 		cleanup(config, ran);
+			// 		utils::error("An error occurred while executing the grounder.",true, utils::EXT_CODE_TOOLCHAIN_GROUNDER_ERR);
+			// 	}
 
-			}
+			// }
 
 			/*********************************************************************************************/
 			/* Header Logic */
@@ -837,8 +838,8 @@ int main(int argc, char** argv)
 						&& (maxmaxstep == Config::UNDEFINED || runConfig.maxstep <= maxmaxstep)
 						&& !blnFoundSolutions))
 				&& (
-					config.run(Config::TC_GROUNDER) 
-					|| config.run(Config::TC_SOLVER) 
+					// config.run(Config::TC_GROUNDER) ||
+					config.run(Config::TC_SOLVER) 
 					|| config.run(Config::TC_POSTPROC)
 					|| (config.mode() == Config::MODE_REACTIVE && config.run(Config::TC_REACTIVE_BRIDGE))
 				)
@@ -854,7 +855,7 @@ int main(int argc, char** argv)
 			// * The user has not selected a query on the command line, and
 			// * The user has not selected to exit the outer loop.
 			(!config.boolConfigOpt(Config::OPT_SUPPRESS_INTERACTION)
-			&& (config.run(Config::TC_GROUNDER) || config.run(Config::TC_SOLVER))
+			&& config.run(Config::TC_SOLVER)
 			&& config.strOpt(Config::STR_QUERY) =="");
 
 	utils::debug("Exiting interactive loop.", true);
@@ -962,12 +963,12 @@ OptionStatus parseCommandOptions(int argc, char const* const* argv, Config& outC
 			}
 			break;
 
-		case OPT_FRM_GRD:
-			// Don't run anything before the grounder.
-			if (outConf.setRunFrom(Config::TC_GROUNDER)) {
-				utils::warning("The option '%s' has overridden one or more previous choices.",true,argv[i]);
-			}
-			break;
+		// case OPT_FRM_GRD:
+		// 	// Don't run anything before the grounder.
+		// 	if (outConf.setRunFrom(Config::TC_GROUNDER)) {
+		// 		utils::warning("The option '%s' has overridden one or more previous choices.",true,argv[i]);
+		// 	}
+		// 	break;
 
 		case OPT_FRM_PRE:
 			// Don't run anything before the pre-processor.
@@ -997,58 +998,58 @@ OptionStatus parseCommandOptions(int argc, char const* const* argv, Config& outC
 			}
 			break;
 
-		case OPT_GRD:
-			// They're giving us a specific executable to use as the grounder instead of the default.
-			// Make sure a second argument follows, and save the new grounder.
-			if (!tmpptr) {
-				if (++i < argc) {
-					tmpptr = argv[i];
-				} else {
-					// setup for a command but they didn't deliver.
-					utils::error("Expected a command following option '%s'. Exiting.",true,0,argv[i-1]);
-					return OPT_STAT_BAD_ARG;
-				}
-			}
+		// case OPT_GRD:
+		// 	// They're giving us a specific executable to use as the grounder instead of the default.
+		// 	// Make sure a second argument follows, and save the new grounder.
+		// 	if (!tmpptr) {
+		// 		if (++i < argc) {
+		// 			tmpptr = argv[i];
+		// 		} else {
+		// 			// setup for a command but they didn't deliver.
+		// 			utils::error("Expected a command following option '%s'. Exiting.",true,0,argv[i-1]);
+		// 			return OPT_STAT_BAD_ARG;
+		// 		}
+		// 	}
 
-			if (outConf.command(Config::TC_GROUNDER, tmpptr)) {
-				utils::warning("Detected redefinition of grounder command. Continuing with value '%s'",true,tmpptr);
-			}
+		// 	if (outConf.command(Config::TC_GROUNDER, tmpptr)) {
+		// 		utils::warning("Detected redefinition of grounder command. Continuing with value '%s'",true,tmpptr);
+		// 	}
 
-			break;
+		// 	break;
 
-		case OPT_GRD_OPTS:
-			if (!tmpptr) {
-				if (++i < argc) {
-					tmpptr = argv[i];
-				} else {
-					// setup for options but they didn't deliver
-					utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0, argv[i-1]);
-					return OPT_STAT_BAD_ARG;
-				}
-			}
+		// case OPT_GRD_OPTS:
+		// 	if (!tmpptr) {
+		// 		if (++i < argc) {
+		// 			tmpptr = argv[i];
+		// 		} else {
+		// 			// setup for options but they didn't deliver
+		// 			utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0, argv[i-1]);
+		// 			return OPT_STAT_BAD_ARG;
+		// 		}
+		// 	}
 
-			if (outConf.opts(Config::TC_GROUNDER, tmpptr)) {
-				utils::warning("Detected redefinition of grounder command options. Continuing with value '%s'",true, tmpptr);
-			}
+		// 	if (outConf.opts(Config::TC_GROUNDER, tmpptr)) {
+		// 		utils::warning("Detected redefinition of grounder command options. Continuing with value '%s'",true, tmpptr);
+		// 	}
 
-			break;
+		// 	break;
 
-		case OPT_GRD_OUT:
+		// case OPT_GRD_OUT:
 
-			if (!tmpptr) {
-				if (++i < argc) {
-					tmpptr = argv[i];
-				} else {
-					// setup for a command but they didn't deliver.
-					utils::error("Expected a file name following option '%s'. Exiting.",true,0,argv[i-1]);
-					return OPT_STAT_BAD_ARG;
-				}
-			}
+		// 	if (!tmpptr) {
+		// 		if (++i < argc) {
+		// 			tmpptr = argv[i];
+		// 		} else {
+		// 			// setup for a command but they didn't deliver.
+		// 			utils::error("Expected a file name following option '%s'. Exiting.",true,0,argv[i-1]);
+		// 			return OPT_STAT_BAD_ARG;
+		// 		}
+		// 	}
 
-			if (outConf.output(Config::TC_GROUNDER, tmpptr)) {
-				utils::warning("Detected redefinition of the grounder output file. Continuing with value '%s'",true, tmpptr);
-			}
-			break;
+		// 	if (outConf.output(Config::TC_GROUNDER, tmpptr)) {
+		// 		utils::warning("Detected redefinition of the grounder output file. Continuing with value '%s'",true, tmpptr);
+		// 	}
+		// 	break;
 
 		case OPT_GRINGO_NONE_HACK:
 			// Specifying a none_hack value.
@@ -1067,12 +1068,12 @@ OptionStatus parseCommandOptions(int argc, char const* const* argv, Config& outC
 			break;
 
 
-		case OPT_JUST_GRD:
-			// Just call the grounder program, no others.
-			if (outConf.setOnlyRun(Config::TC_GROUNDER)) {
-				utils::warning("The option '%s' has overridden one or more previous choices.",true,argv[i]);
-			}
-			break;
+		// case OPT_JUST_GRD:
+		// 	// Just call the grounder program, no others.
+		// 	if (outConf.setOnlyRun(Config::TC_GROUNDER)) {
+		// 		utils::warning("The option '%s' has overridden one or more previous choices.",true,argv[i]);
+		// 	}
+		// 	break;
 
 		case OPT_JUST_PRE:
 			// Just call the preprocessor program, no others.
@@ -1233,7 +1234,7 @@ OptionStatus parseCommandOptions(int argc, char const* const* argv, Config& outC
 
 			tmpBool = outConf.output(Config::TC_TRANSLATOR, DEF_INT_TRANS_FILE) 
 					|/* non-shortcutting bitwise or */ outConf.output(Config::TC_PREPROC, DEF_INT_PREPROC_FILE)
-					| outConf.output(Config::TC_GROUNDER, DEF_INT_GRD_FILE)
+
 					| outConf.output(Config::TC_SOLVER, DEF_INT_SO_FILE);
 
 			// Shut off deleting intermediate files.
@@ -1500,12 +1501,12 @@ OptionStatus parseCommandOptions(int argc, char const* const* argv, Config& outC
 			}
 			break;
 
-		case OPT_TO_GRD:
-			// Shut off deleting intermediate files.
-			if (outConf.setRunTo(Config::TC_GROUNDER)) {
-				utils::warning("The option '%s' has overridden one or more previous choices.",true,argv[i]);
-			}
-			break;
+		// case OPT_TO_GRD:
+		// 	// Shut off deleting intermediate files.
+		// 	if (outConf.setRunTo(Config::TC_GROUNDER)) {
+		// 		utils::warning("The option '%s' has overridden one or more previous choices.",true,argv[i]);
+		// 	}
+		// 	break;
 
 		case OPT_TO_PRE:
 			// Run everything up to the pre-processor.
@@ -1745,7 +1746,7 @@ Option parseOption(char const* opt, char const*& val) {
 			"-brout="|"--bridge-output="			{ val = opt; return OPT_BRIDGE_OUT; }
 			"-brout"|"--bridge-output"				{ return OPT_BRIDGE_OUT; }
 			"-frombr"|"--from-bridge"				{ return OPT_FRM_BRIDGE; }
-			"-fromgr"|"--from-grounder"				{ return OPT_FRM_GRD; }
+
 			"-frompre"|"--from-pre-processor"		{ return OPT_FRM_PRE; }
 			"-frompost"|"--from-post-processor"		{ return OPT_FRM_POST; }
 			"-fromso"|"--from-solver"				{ return OPT_FROM_SO; }
@@ -2307,91 +2308,98 @@ unsigned int queryUserForConstant(Config const& config, std::string const& const
 }
 
 int runTool(Config const& config, Config::Toolchain tool, std::string const& name, Config::RunConfig const* subconfig) {
+	
 	int ret = TC_STAT_TOOLSKIPPED;
+	
+	if (!config.run(tool)) {
+		utils::debug("Skipping %s execution.", true, name.c_str());
+	} 
+	else if (!config.cumulativeInputCount(tool) && tool != Config::TC_REACTIVE_BRIDGE) {
+		utils::pragma("No input files for the %s have been specified. Skipping it.", true, name.c_str());
+	} 
+	else {
+	// Run the translator...
+	//		std::string tmpCmd = config.compileCommandLine(tool, subconfig);
+		std::list<std::string> arglist;
+		config.compileArgs(tool, arglist, subconfig);
+		utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
 
 
+		bp::context ctx;
+		ctx.environment = bp::self::get_environment();
+		if (tool == Config::TC_REACTIVE_BRIDGE) {
+			ctx.stdin_behavior  = bp::inherit_stream();
+			ctx.stdout_behavior = bp::inherit_stream();
+			ctx.stderr_behavior = bp::inherit_stream();
+		} 
+		else if (config.mode() != Config::MODE_REACTIVE || tool != Config::TC_SOLVER) {
+			ctx.stdin_behavior  = bp::close_stream();
+			ctx.stdout_behavior = bp::capture_stream();
+			ctx.stderr_behavior = bp::capture_stream();
+		}
+		else {
+			ctx.stdin_behavior  = bp::inherit_stream();
+			ctx.stdout_behavior = bp::silence_stream();
+			ctx.stderr_behavior = bp::inherit_stream();
 
-if (!config.run(tool)) {
-utils::debug("Skipping %s execution.", true, name.c_str());
-} else if (!config.cumulativeInputCount(tool) && tool != Config::TC_REACTIVE_BRIDGE) {
-utils::pragma("No input files for the %s have been specified. Skipping it.", true, name.c_str());
-} else {
-// Run the translator...
-//		std::string tmpCmd = config.compileCommandLine(tool, subconfig);
-std::list<std::string> arglist;
-config.compileArgs(tool, arglist, subconfig);
-utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
-
-
-	bp::context ctx;
-	ctx.environment = bp::self::get_environment();
-	if (tool == Config::TC_REACTIVE_BRIDGE) {
-		ctx.stdin_behavior  = bp::inherit_stream();
-		ctx.stdout_behavior = bp::inherit_stream();
-		ctx.stderr_behavior = bp::inherit_stream();
-	} else if (config.mode() != Config::MODE_REACTIVE || tool != Config::TC_SOLVER) {
-		ctx.stdin_behavior  = bp::close_stream();
-		ctx.stdout_behavior = bp::capture_stream();
-		ctx.stderr_behavior = bp::capture_stream();
-	} else {
-		ctx.stdin_behavior  = bp::inherit_stream();
-		ctx.stdout_behavior = bp::silence_stream();
-		ctx.stderr_behavior = bp::inherit_stream();
-
-	}
-
-	bp::child c = bp::launch(bp::find_executable_in_path(config.command(tool)), arglist, ctx);
-
-	if (tool == Config::TC_REACTIVE_BRIDGE) {
-		bp::status s = c.wait();
-		if (s.exited()) ret = s.exit_status();
-		else ret = TC_STAT_EXEC_ERR;
-	} else if (config.mode() != Config::MODE_REACTIVE || tool != Config::TC_SOLVER) {
+		}
 		
-		std::ofstream outstream(config.output(tool));
-		std::ofstream errstream(config.errFile());
+		
+		bp::child c = bp::launch(bp::find_executable_in_path(config.command(tool)), arglist, ctx);
+
+		if (tool == Config::TC_REACTIVE_BRIDGE) {
+			bp::status s = c.wait();
+			if (s.exited()) ret = s.exit_status();
+			else ret = TC_STAT_EXEC_ERR;
+		} 
+		else if (config.mode() != Config::MODE_REACTIVE || tool != Config::TC_SOLVER) {
+			
+			std::ofstream outstream(config.output(tool));
+			std::ofstream errstream(config.errFile());
 
 
 
-		if (!outstream.good()) {
-			if (config.customOut(tool))
-				utils::error("Unable to open '%s' for writing.", true, 0, config.output(tool).c_str());
-			else
-				utils::error("Unable to open temporary file '%s' for writing.", true, 0, config.output(tool).c_str());
-			return TC_STAT_IO_ERR;
-		}
+			if (!outstream.good()) {
+				if (config.customOut(tool))
+					utils::error("Unable to open '%s' for writing.", true, 0, config.output(tool).c_str());
+				else
+					utils::error("Unable to open temporary file '%s' for writing.", true, 0, config.output(tool).c_str());
+				return TC_STAT_IO_ERR;
+			}
 
 
-		if (!errstream.good()) {
-			utils::error("Unable to open temporary file '%s' for writing.", true, 0, config.errFile().c_str());
-			return TC_STAT_IO_ERR;
-		}
+			if (!errstream.good()) {
+				utils::error("Unable to open temporary file '%s' for writing.", true, 0, config.errFile().c_str());
+				return TC_STAT_IO_ERR;
+			}
 
 
-		// write out data
-		copy(std::istreambuf_iterator<char>(c.get_stdout()), std::istreambuf_iterator<char>(),
-			std::ostreambuf_iterator<char>(outstream));
-		copy(std::istreambuf_iterator<char>(c.get_stderr()), std::istreambuf_iterator<char>(),
-			std::ostreambuf_iterator<char>(errstream));
+			// write out data
+			copy(std::istreambuf_iterator<char>(c.get_stdout()), std::istreambuf_iterator<char>(),
+				std::ostreambuf_iterator<char>(outstream));
+			copy(std::istreambuf_iterator<char>(c.get_stderr()), std::istreambuf_iterator<char>(),
+				std::ostreambuf_iterator<char>(errstream));
 
-		bp::status s = c.wait();
-		if (s.exited()) ret = s.exit_status();
-		else ret = TC_STAT_EXEC_ERR;
-
-
-/*					try {
-				int tmp = bp::wait_for_exit(c);
-				ret = BOOST_PROCESS_EXITSTATUS(tmp);
-			} catch (boost::system::system_error& e) {
-				utils::debug("Caught exception '%s'.", true, e.what());
-				ret = TC_STAT_EXEC_ERR;
-			} */
-
-		outstream.close();
-		errstream.close();
+			bp::status s = c.wait();
+			if (s.exited()) ret = s.exit_status();
+			else ret = TC_STAT_EXEC_ERR;
 
 
-	} else ret = TC_STAT_BG;
+	/*					try {
+					int tmp = bp::wait_for_exit(c);
+					ret = BOOST_PROCESS_EXITSTATUS(tmp);
+				} catch (boost::system::system_error& e) {
+					utils::debug("Caught exception '%s'.", true, e.what());
+					ret = TC_STAT_EXEC_ERR;
+				} */
+
+			outstream.close();
+			errstream.close();
+
+
+		} 
+		else 
+			ret = TC_STAT_BG;
 }
 
 
@@ -2437,9 +2445,9 @@ bool processErrors(Config const& config, Config::Toolchain tool, std::string con
 		case Config::TC_PREPROC:
 
 			break;
-		case Config::TC_GROUNDER:
+		// case Config::TC_GROUNDER:
 
-			break;
+		// 	break;
 		case Config::TC_SOLVER:
 
 			// Filter the usual warnings.
