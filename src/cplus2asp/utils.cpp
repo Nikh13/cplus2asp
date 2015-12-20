@@ -142,7 +142,7 @@ void error(char const* fmt, bool newline, unsigned char exitCode, ...) {
 	   if (exitCode) exit(exitCode);
 }
 
-
+#ifdef DEBUG
 void debug(char const* fmt, bool newline, ...) {
 
 	   va_list arg;
@@ -156,7 +156,7 @@ void debug(char const* fmt, bool newline, ...) {
 	   if (newline)
 		   fprintf(stdout, "\n");
 }
-
+#endif
 
 
 };

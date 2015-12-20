@@ -95,6 +95,7 @@ Config::Config(std::string const& name) {
 
 	command(TC_TRANSLATOR,DEF_TRANS_CMD);
 	command(TC_PREPROC,DEF_PREPROC_CMD);
+	command(TC_C4_PREPROC,DEF_C4_PREPROC_CMD);
 	// command(TC_GROUNDER,DEF_GRD_CMD);
 	command(TC_SOLVER,DEF_SO_CMD);
 	command(TC_POSTPROC,DEF_POSTPROC_CMD);
@@ -107,6 +108,7 @@ Config::Config(std::string const& name) {
 	opts(TC_TRANSLATOR,DEF_TRANS_OPTS);
 	opts(TC_PREPROC,DEF_PREPROC_OPTS);
 	// opts(TC_GROUNDER,DEF_GRD_OPTS);
+	opts(TC_C4_PREPROC,DEF_C4_PREPROC_OPTS);
 	opts(TC_SOLVER,DEF_SO_OPTS);
 	opts(TC_POSTPROC,DEF_POSTPROC_OPTS);
 	opts(TC_REACTIVE_BRIDGE,DEF_REACTIVE_BRIDGE_OPTS);
@@ -350,7 +352,7 @@ size_t Config::cumulativeInputCount(Toolchain tool) const {
 		// 	count++;
 		// 	break;
 		// }
-		if (run(TC_PREPROC)) {
+		if (run(TC_C4_PREPROC)) {
 				count++;
 				break;
 			}
@@ -361,6 +363,12 @@ size_t Config::cumulativeInputCount(Toolchain tool) const {
 	// 		count++;
 	// 		break;
 	// 	}
+		/* no break */
+	case TC_C4_PREPROC:
+		if(run(TC_TRANSLATOR)){
+			count++;
+			break;
+		}
 		/* no break */
 
 	case TC_PREPROC:
@@ -475,6 +483,13 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 
 		break;
 
+	case  TC_C4_PREPROC:
+		arglist.push_back("-o");
+		arglist.push_back("-f");
+
+		compileInputArgs(tool, arglist);
+		break;
+
 	case TC_SOLVER:
 		// Solvers need:
 		// * Number of solutions to find.
@@ -501,6 +516,8 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 		}
 
 
+
+
 		if (intConfigOpt(OPT_MAXADDITIVE) != UNDEFINED) arglist.push_back("-c maxAdditive=" + utils::to_string(intConfigOpt(OPT_MAXADDITIVE)));
 		if (strOpt(STR_NONE_ALIAS) != "") arglist.push_back("-c none=" + strOpt(STR_NONE_ALIAS));
 
@@ -514,7 +531,7 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 		}
 
 		// special constants (if we're running what looks like a grounder/solver)
-		if (!run(TC_PREPROC)) {
+		if (!run(TC_C4_PREPROC)) {
 			if (subconfig) {
 				if (subconfig->query != "") arglist.push_back("-c query=q_" +subconfig->query);
 				if (subconfig->maxstep != UNDEFINED) arglist.push_back("-c maxstep=" + utils::to_string(subconfig->maxstep));
@@ -567,17 +584,20 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 
 		if (mode() == MODE_REACTIVE && run(TC_REACTIVE_BRIDGE)) {
 
-#ifdef NO_REACTIVE_BRIDGE
-			if (intConfigOpt(OPT_EXT_PORT) != UNDEFINED)
-				arglist.push_back("--port=" + utils::to_string(intConfigOpt(OPT_EXT_PORT)));
-			else
-#endif
+		#ifdef NO_REACTIVE_BRIDGE
+					if (intConfigOpt(OPT_EXT_PORT) != UNDEFINED)
+						arglist.push_back("--port=" + utils::to_string(intConfigOpt(OPT_EXT_PORT)));
+					else
+		#endif
 				arglist.push_back("--port=" + utils::to_string(intConfigOpt(OPT_INT_PORT)));
-		} else if (mode() == MODE_REACTIVE) {
+		} 
+		else if (mode() == MODE_REACTIVE) {
 			// we aren't running the reactive bridge.
 			// connect to the external port instead.
 			arglist.push_back("--port=" + utils::to_string(intConfigOpt(OPT_EXT_PORT)));
 		} 
+
+		arglist.push_back("--warn=no-atom-undefined");
 			
 
 		break;
@@ -609,9 +629,9 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 	// 	break;
 
 	case TC_REACTIVE_BRIDGE:
-#ifdef NO_REACTIVE_BRIDGE
-		// Don't do anything!
-#else
+		#ifdef NO_REACTIVE_BRIDGE
+				// Don't do anything!
+		#else
 		// The reactive client doesn't need to know much.
 		// Just the ports to use and where to find the symbol table
 //		compileInputArgs(tool, arglist);
@@ -787,8 +807,8 @@ void Config::compileInputArgs(Toolchain tool, std::list<std::string>& args) cons
 		/* no break */
 
 	case TC_SOLVER:
-		if (run(TC_PREPROC)) {
-			args.push_back(output(TC_PREPROC));
+		if (run(TC_C4_PREPROC)) {
+			args.push_back(output(TC_C4_PREPROC));
 			break;
 		}
 		/* no break */
@@ -798,6 +818,12 @@ void Config::compileInputArgs(Toolchain tool, std::list<std::string>& args) cons
 	// 		args.push_back(output(TC_PREPROC));
 	// 		break;
 	// 	}
+		/* no break */
+	case TC_C4_PREPROC:
+		if(run(TC_PREPROC)){
+			args.push_back(output(TC_PREPROC));
+			break;
+		}
 		/* no break */
 
 	case TC_PREPROC:

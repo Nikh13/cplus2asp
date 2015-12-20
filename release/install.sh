@@ -11,6 +11,7 @@ IS_ROOT=0
 
 INSTALL_F2LP="Y"
 # INSTALL_ICLINGO="Y"
+INSTALL_CLINGO3TO4="Y"
 INSTALL_CLINGO="Y"
 # INSTALL_GRINGO_3="Y"
 # INSTALL_CLASP="Y"
@@ -62,6 +63,17 @@ done
 #         * ) echo "Please answer yes (Y) or no (n).";;
 #     esac
 # done
+
+while true; do
+    read -p "Do you wish to install Clingo3to4 (Y/n) [$INSTALL_CLINGO3TO4]? " yn
+    [ -z "$yn" ] && break;
+    case $yn in
+        [Yy]* ) INSTALL_CLINGO3TO4="Y"; break;;
+        [Nn]* ) INSTALL_CLINGO3TO4="n"; break;;
+        * ) echo "Please answer yes (Y) or no (n).";;
+    esac
+done
+
 
 while true; do
     read -p "Do you wish to install Clingo (Y/n) [$INSTALL_CLINGO]? " yn
@@ -122,6 +134,12 @@ fi
 # 	echo -e "  iclingo\t\t\tskip."
 # fi
 
+if [ "$INSTALL_CLINGO3TO4" = "Y" ]; then 
+	echo -e "  clingo3to4\t\t\tinstall."
+else
+	echo -e "  clingo\t\t\tskip."
+fi
+
 if [ "$INSTALL_CLINGO" = "Y" ]; then 
 	echo -e "  clingo\t\t\tinstall."
 else
@@ -179,6 +197,10 @@ fi
 # 	cp bin/iclingo $BIN_PATH/. 
 # fi
 
+if [ "$INSTALL_CLINGO3TO4" = "Y" ]; then
+	cp bin/clingo3to4 $BIN_PATH/. 
+fi
+
 if [ "$INSTALL_CLINGO" = "Y" ]; then 
 	cp bin/clingo $BIN_PATH/. 
 fi
@@ -216,6 +238,11 @@ if [ $IS_ROOT -eq 1 ] ; then
 	# 	chmod a+rx $BIN_PATH/iclingo
 	# fi
 
+	if [ "$INSTALL_CLINGO3TO4" = "Y" ]; then
+		chown root:root $BIN_PATH/clingo3to4
+		chmod a+rx $BIN_PATH/clingo3to4
+	fi
+
 	if [ "$INSTALL_CLINGO" = "Y" ]; then 
 		chown root:root $BIN_PATH/clingo
 		chmod a+rx $BIN_PATH/clingo
@@ -244,6 +271,11 @@ else
 	# if [ "$INSTALL_ICLINGO" = "Y" ]; then 
 	# 	chmod ug+rx $BIN_PATH/iclingo
 	# fi
+
+
+	if [ "$INSTALL_CLINGO3TO4" = "Y" ]; then
+		chmod ug+rx $BIN_PATH/clingo3to4
+	fi
 
 	if [ "$INSTALL_CLINGO" = "Y" ]; then 
 		chmod ug+rx $BIN_PATH/clingo

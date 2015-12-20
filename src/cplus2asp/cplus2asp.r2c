@@ -450,6 +450,26 @@ int main(int argc, char** argv)
 
 	}
 
+	utils::debug("Entering clingo3to4 translator subroutine.", true);
+	if ((intSystemResult = runTool(config, Config::TC_C4_PREPROC, "c4-pre-processor")) != TC_STAT_TOOLSKIPPED)  {
+		// It Ran!
+		ran[Config::TC_C4_PREPROC] = true;
+
+		if (!config.run(Config::TC_SOLVER)) {
+			if (!echoFile(std::cout, config.output(Config::TC_PREPROC))) {
+				utils::error("Unable to read from the c4 pre-processor output file '%s'", true, -1, config.output(Config::TC_PREPROC).c_str());
+			}
+		}
+		
+		// check the status and make sure all is well...
+		if(intSystemResult != TC_STAT_OK)
+		{
+			cleanup(config, ran);
+			utils::error("An error occurred while executing the c4 pre-processor.",true, utils::EXT_CODE_TOOLCHAIN_PREPROC_ERR);
+		}
+
+	}
+
 	/**********************************************************************************************************************/
 	/* Intermediate Processing & Final Configuration */
 	/**********************************************************************************************************************/
