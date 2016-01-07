@@ -6,10 +6,10 @@ clingo3to4_CPPFLAGS = $(BOOST_CPPFLAGS)
 
 clingo3to4_LDADD = $(BOOST_REGEX_LIBS) $(BOOST_PROGRAM_OPTIONS_LIBS)
 
-BUILT_SOURCES = main.cpp
+BUILT_SOURCES = f2lp_wrapper/program.cpp
 
 clingo3to4_SOURCES = \
-main.cpp \
-clingo3to4.cpp \
-domain.cpp 
+f2lp_wrapper/program.cpp \
+f2lp_wrapper/clingo3to4.cpp \
+f2lp_wrapper/domain.cpp 
 

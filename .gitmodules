@@ -4,3 +4,9 @@
 [submodule "externals/bcplusparser"]
 	path = externals/bcplusparser
 	url = git://github.com/babb517/bcplusparser
+[submodule "src/f2lp_wrapper"]
+	path = src/f2lp_wrapper
+	url = https://github.com/samidhtalsania/f2lp_wrapper
+[submodule "src/clingo3to4/f2lp_wrapper"]
+	path = src/clingo3to4/f2lp_wrapper
+	url = https://github.com/samidhtalsania/f2lp_wrapper
