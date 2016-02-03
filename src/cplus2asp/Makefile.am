@@ -4,6 +4,7 @@ include $(top_srcdir)/src/Makefile.shared
 #AM_CFLAGS += -DNO_REACTIVE_BRIDGE
 #AM_CXXFLAGS += -DNO_REACTIVE_BRIDGE
 
+
 bin_PROGRAMS = cplus2asp4
 
 cplus2asp4_CPPFLAGS = $(BOOST_CPPFLAGS)

@@ -53,6 +53,7 @@
  * v1.0 - First working version.
  */
 
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -72,7 +73,9 @@
 #ifndef BOOST_FILESYSTEM_VERSION
 #define BOOST_FILESYSTEM_VERSION 3
 #endif
+#define BOOST_NO_CXX11_SCOPED_ENUMS
 #include <boost/filesystem.hpp>
+#undef BOOST_NO_CXX11_SCOPED_ENUMS
 #include <boost/iostreams/device/file_descriptor.hpp>
 #include "boost/process.hpp"
 #include <boost/foreach.hpp>
@@ -307,7 +310,12 @@ bool processErrors(Config const& config, Config::Toolchain tool, std::string con
  * @param config The program's configuration.
  * @param ran An array of booleans of length Config::_TC_LENGTH_ detailing which components have ran.
  */
+#ifdef DEBUG
+void cleanup(Config config, bool const* ran, bfs::path path);
+#else
 void cleanup(Config const& config, bool const* ran);
+#endif
+
 
 /**
  * Attempts to echo the specified file to the specified output stream.
@@ -344,6 +352,9 @@ int main(int argc, char** argv)
 	bool blnFoundSolutions = false; 					// Set to true if the solver or post-processor indicates solutions were found.
 
 
+	#ifdef DEBUG
+	bfs::path selfpath = argv[0];
+	#endif
 	/***************************************************************************************************/
 	/* Command Line Parsing */
 	/***************************************************************************************************/
@@ -357,17 +368,29 @@ int main(int argc, char** argv)
 	case OPT_STAT_BAD_ARG:
 		utils::error("A problem occurred parsing program arguments. Exiting.", true, 0);
 		showHelp(strEXEName, std::cout);
+		#ifdef DEBUG
+		cleanup(config, ran, selfpath);
+		#else
 		cleanup(config, ran);
+		#endif
 		utils::nice_exit(utils::EXT_CODE_BAD_ARGS,NULL);
 		break;
 	case OPT_STAT_HELP:
 		showHelp(strEXEName, std::cout);
+		#ifdef DEBUG
+		cleanup(config, ran, selfpath);
+		#else
 		cleanup(config, ran);
+		#endif
 		utils::nice_exit(utils::EXT_CODE_GOOD,NULL);
 		break;
 	case OPT_STAT_VERSION:
 		showVersion(strEXEName, std::cout);
+		#ifdef DEBUG
+		cleanup(config, ran, selfpath);
+		#else
 		cleanup(config, ran);
+		#endif
 		utils::nice_exit(utils::EXT_CODE_GOOD,NULL);
 		break;
 	default:
@@ -420,7 +443,11 @@ int main(int argc, char** argv)
 
 		if(intSystemResult != TC_STAT_OK)
 		{
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
 			cleanup(config, ran);
+			#endif
 			utils::error("An error occurred while executing the translator.",true, utils::EXT_CODE_TOOLCHAIN_TRANS_ERR);
 		}
 
@@ -444,7 +471,11 @@ int main(int argc, char** argv)
 		// check the status and make sure all is well...
 		if(intSystemResult != TC_STAT_OK)
 		{
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
 			cleanup(config, ran);
+			#endif
 			utils::error("An error occurred while executing the pre-processor.",true, utils::EXT_CODE_TOOLCHAIN_PREPROC_ERR);
 		}
 
@@ -464,7 +495,11 @@ int main(int argc, char** argv)
 		// check the status and make sure all is well...
 		if(intSystemResult != TC_STAT_OK)
 		{
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
 			cleanup(config, ran);
+			#endif
 			utils::error("An error occurred while executing the c4 pre-processor.",true, utils::EXT_CODE_TOOLCHAIN_PREPROC_ERR);
 		}
 
@@ -542,13 +577,21 @@ int main(int argc, char** argv)
 				} else {
 					// They elected to exit instead of answer a simple question.
 					// Life moves on but we do not.
+					#ifdef DEBUG
+					cleanup(config, ran, selfpath);
+					#else
 					cleanup(config, ran);
+					#endif
 					utils::nice_exit(0, "Exiting.");
 				}
 			} else {
 				// we can't ask the user
 				utils::error("The maxAdditive constant was never defined and is required for program's containing additive constants. Exiting.", true, 0);
+				#ifdef DEBUG
+				cleanup(config, ran, selfpath);
+				#else
 				cleanup(config, ran);
+				#endif
 				utils::nice_exit(utils::EXT_CODE_UNDEFINED_CONSTANTS, NULL);
 			}
 		}
@@ -617,20 +660,32 @@ int main(int argc, char** argv)
 
 					// They elected to exit instead of answer a simple question.
 					// Life moves on but we do not.
+					#ifdef DEBUG
+					cleanup(config, ran, selfpath);
+					#else
 					cleanup(config, ran);
+					#endif
 					utils::nice_exit(0, "Exiting.");
 				}
 
 			} else if (runConfig.query == "") {
 				// Not specified and we can't prompt the for it.
 				utils::error("The query to execute was never specified. Exiting.", true, 0);
+				#ifdef DEBUG
+				cleanup(config, ran, selfpath);
+				#else
 				cleanup(config, ran);
+				#endif
 				utils::nice_exit(utils::EXT_CODE_UNDEFINED_CONSTANTS, NULL);
 			}
 
 			if ((activeQuery = config.query(runConfig.query)) == NULL) {
 				utils::error("The specified query was not found.", true, 0);
+				#ifdef DEBUG
+				cleanup(config, ran, selfpath);
+				#else
 				cleanup(config, ran);
+				#endif
 				utils::nice_exit(utils::EXT_CODE_INVALID_QUERY, NULL);
 			}
 
@@ -676,7 +731,11 @@ int main(int argc, char** argv)
 		// Final sanity check on the min and max steps...
 		if (runConfig.maxstep != Config::UNDEFINED && runConfig.minstep > runConfig.maxstep) {
 			utils::error("The maxstep value must be at least that of the minstep.", true, 0);
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
 			cleanup(config, ran);
+			#endif
 			utils::nice_exit(utils::EXT_CODE_INVALID_STEP_VALUE, NULL);
 		}
 
@@ -775,7 +834,11 @@ int main(int argc, char** argv)
 
 				if (!ok) {
 					// something went wrong
+					#ifdef DEBUG
+					cleanup(config, ran, selfpath);
+					#else
 					cleanup(config, ran);
+					#endif
 					utils::error("An error occurred while executing the solver.",true, utils::EXT_CODE_TOOLCHAIN_SOLVER_ERR);
 				}
 
@@ -801,7 +864,11 @@ int main(int argc, char** argv)
 					} else if (intSystemResult == TC_STAT_POSTPROC_AS2TRANSITION_NO_SOLUTIONS) {
 
 					} else if(intSystemResult != TC_STAT_OK) {
+						#ifdef DEBUG
+						cleanup(config, ran, selfpath);
+						#else
 						cleanup(config, ran);
+						#endif
 						utils::error("An error occurred while executing the post-processor.",true, utils::EXT_CODE_TOOLCHAIN_POSTPROC_ERR);
 					}
 				}
@@ -829,7 +896,11 @@ int main(int argc, char** argv)
 					if (intSystemResult == TC_STAT_BG) {
 						// The reactive bridge was launched in the background.
 					} else if(intSystemResult != TC_STAT_OK) {
+						#ifdef DEBUG
+						cleanup(config, ran, selfpath);
+						#else
 						cleanup(config, ran);
+						#endif
 						utils::error("An error occurred while executing the reactive bridge.",true, utils::EXT_CODE_TOOLCHAIN_REACTIVE_BRIDGE_ERR);
 					}
 				}
@@ -882,9 +953,11 @@ int main(int argc, char** argv)
 	/**********************************************************************************************************************/
 	/* Final Cleanup */
 	/**********************************************************************************************************************/
-
+	#ifdef DEBUG
+	cleanup(config, ran, argv[0]);
+	#else
 	cleanup(config, ran);
-
+	#endif
 	return 0;
 }
 
@@ -2342,7 +2415,7 @@ int runTool(Config const& config, Config::Toolchain tool, std::string const& nam
 	//		std::string tmpCmd = config.compileCommandLine(tool, subconfig);
 		std::list<std::string> arglist;
 		config.compileArgs(tool, arglist, subconfig);
-		utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
+		// utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
 
 
 		bp::context ctx;
@@ -2523,6 +2596,41 @@ bool processErrors(Config const& config, Config::Toolchain tool, std::string con
 	return true;
 }
 
+
+#ifdef DEBUG
+
+void cleanup(Config config, bool const* ran, bfs::path selfpath){
+	utils::debug("Deleting appropriate temporary files.", true);
+	
+	if (config.boolConfigOpt(Config::OPT_DISCARD_F2LP)) {
+		// Discard F2LP intermediates...
+		if (ran[Config::TC_PREPROC]) {
+			bfs::copy_file(F2LP_INPUT_FILE,selfpath.remove_filename().string() + "F2LP_INPUT_FILE",bfs::copy_option::overwrite_if_exists);
+			bfs::copy_file(F2LP_OUTPUT_FILE,selfpath.remove_filename().string() + "F2LP_OUTPUT_FILE",bfs::copy_option::overwrite_if_exists);
+			bfs::remove(F2LP_INPUT_FILE);
+			bfs::remove(F2LP_OUTPUT_FILE);
+		}
+	}
+
+	bfs::remove(config.errFile());
+
+	for (int i = 0; i < (int)Config::_TC_LENGTH_; i++) {
+		if (!config.customOut((Config::Toolchain)i)) {
+			utils::debug("Deleting '%s'.", true, config.output((Config::Toolchain)i).c_str());
+			try{
+				bfs::copy_file(config.output((Config::Toolchain)i),selfpath.remove_filename().string() + config.getTextForEnum(i) + std::to_string(i),bfs::copy_option::overwrite_if_exists);
+			}
+			catch(const bfs::filesystem_error& ex){
+				std::cout<<ex.what()<<'\n';
+			}
+			bfs::remove(config.output((Config::Toolchain)i));	
+		}
+	}
+}
+
+
+#else
+
 void cleanup(Config const& config, bool const* ran) {
 	utils::debug("Deleting appropriate temporary files.", true);
 
@@ -2543,6 +2651,10 @@ void cleanup(Config const& config, bool const* ran) {
 		}
 	}
 }
+
+#endif
+
+
 
 // Attempts to echo the specified file to the specified output stream.
 bool echoFile(std::ostream& out, std::string const& filename) {

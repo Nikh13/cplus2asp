@@ -135,6 +135,7 @@ public:
 		_TC_LENGTH_ = 0x06						///< (Not a tool) Provides the total length of the toolchain command.
 	};
 
+
 	/// The various operating modes that we can use.
 	enum Mode
 	{
@@ -642,6 +643,10 @@ public:
 	// TODO
 	bool captureOutput(Toolchain tool);
 
+	
+	const char * getTextForEnum(int enumVal);
+	
+
 
 protected:
 
@@ -661,6 +666,7 @@ protected:
 	 * @return out.
 	 */
 	FileType& checkExtension(char const* ext, FileType& out) const;
+
 
 
 };

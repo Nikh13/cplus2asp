@@ -156,7 +156,7 @@ void debug(char const* fmt, bool newline, ...) {
 	   if (newline)
 		   fprintf(stdout, "\n");
 }
-#endif
 
+#endif
 
 };
