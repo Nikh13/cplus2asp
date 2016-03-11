@@ -47,7 +47,6 @@
 
 #include "Config.h"
 #include "utils.h"
-#include "incremental.h"
 
 namespace fs = boost::filesystem;
 namespace bp = boost::process;
