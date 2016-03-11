@@ -175,7 +175,6 @@ public:
 		OPT_NUM_SOLN,					///< The currently configured # of solutions to find.
 		OPT_EXT_PORT,					///< The port that we should make available for the user.
 		OPT_INT_PORT,					///< The port which we should use internally to communicate with oClingo.
-
 		_OPT_LENGTH_,					///< Dummy constant to provide the number configuration options.
 		_OPT_END_ = _OPT_LENGTH_		///< Dummy constant to mark the end of the configuration list.
 	};
@@ -274,6 +273,7 @@ public:
 		unsigned int minstep;					///< The minimum step that should be solved for.
 		unsigned int maxstep;					///< The maximum step that should be solved for.
 		unsigned int numSoln;					///< The number of solutions to display.
+		mutable bool is_pyscript_added = false;					///< Boolean value to check if the python script has been added or not during the first run
 
 	};
 

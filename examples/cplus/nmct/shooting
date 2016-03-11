@@ -25,12 +25,13 @@ shoot causes -alive(T) if target=T.
 shoot causes -loaded.
 nonexecutable shoot if -loaded.
 
-nonexecutable aim(T) & shoot.
+nonexecutable aim(T) , shoot.
 
 
 :- query 
 maxstep :: 6;
-0: alive(T) & target=none & -loaded;
+label::100;
+0: alive(T) , target=none , -loaded;
 maxstep:
    -alive(T).
 

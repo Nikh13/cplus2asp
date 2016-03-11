@@ -641,6 +641,8 @@ int main(int argc, char** argv)
 
 		runConfig.query = config.strOpt(Config::STR_QUERY);
 
+		
+
 		/********************************************************************************************/
 		/*  Run configurations */
 		/********************************************************************************************/
@@ -705,6 +707,7 @@ int main(int argc, char** argv)
 					runConfig.minstep = activeQuery->minstep;
 				else
 					runConfig.minstep = 0; // default to 0.
+					// runConfig.minstep = 1; //default to 1. In clingo4 minstep=0 is UNKNOWN unlike in clingo3 
 			}
 			
 
@@ -726,7 +729,7 @@ int main(int argc, char** argv)
 		runConfig.maxstep = (config.mode() == Config::MODE_STATIC_AUTO || config.mode() == Config::MODE_STATIC_MANUAL)
 				? runConfig.minstep
 				: maxmaxstep;
-
+		
 
 		// Final sanity check on the min and max steps...
 		if (runConfig.maxstep != Config::UNDEFINED && runConfig.minstep > runConfig.maxstep) {
@@ -2415,7 +2418,7 @@ int runTool(Config const& config, Config::Toolchain tool, std::string const& nam
 	//		std::string tmpCmd = config.compileCommandLine(tool, subconfig);
 		std::list<std::string> arglist;
 		config.compileArgs(tool, arglist, subconfig);
-		// utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
+		utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
 
 
 		bp::context ctx;
