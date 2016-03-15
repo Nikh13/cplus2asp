@@ -2418,6 +2418,12 @@ int runTool(Config const& config, Config::Toolchain tool, std::string const& nam
 	//		std::string tmpCmd = config.compileCommandLine(tool, subconfig);
 		std::list<std::string> arglist;
 		config.compileArgs(tool, arglist, subconfig);
+
+		std::vector<std::string> tempVec (arglist.size());
+		int i = 0;
+		for (std::list<std::string>::iterator it=arglist.begin(); it != arglist.end(); ++it)
+    		tempVec.at(i++) = *it;
+
 		utils::debug("Running the '%s' (program: '%s') with command: '%s'",true,name.c_str(), config.command(tool).c_str(), config.compileCommandLine(tool, subconfig).c_str());
 
 

@@ -577,7 +577,7 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 		if (mode() == MODE_INCREMENTAL || mode() == MODE_REACTIVE) {
 			if (subconfig) {
 				if (subconfig->minstep != UNDEFINED) {
-					arglist.push_back("-c imin=" + utils::to_string(subconfig->minstep));
+					arglist.push_back("-c imin=" + utils::to_string(subconfig->minstep+1));
 				}
 				if (subconfig->maxstep != UNDEFINED) {
 					if (subconfig->maxstep > 0){
@@ -585,6 +585,7 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 					}else{
 						// Still need to figure out what to do with this.
 						// arglist.push_back("--ibase");
+						arglist.push_back("-c imax=" + utils::to_string(subconfig->maxstep+1));
 					}
 				}
 			} else {
@@ -643,7 +644,6 @@ void Config::compileArgs(Toolchain tool, std::list<std::string>& arglist, RunCon
 		} 
 
 		arglist.push_back("--warn=no-atom-undefined");
-			
 
 		break;
 
