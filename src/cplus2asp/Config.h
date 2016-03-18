@@ -273,7 +273,7 @@ public:
 		unsigned int minstep;					///< The minimum step that should be solved for.
 		unsigned int maxstep;					///< The maximum step that should be solved for.
 		unsigned int numSoln;					///< The number of solutions to display.
-		mutable bool is_pyscript_added = false;					///< Boolean value to check if the python script has been added or not during the first run
+		mutable bool is_pyscript_added = false;					///< Boolean value to check if the lua include has been added or not during the first run
 
 	};
 

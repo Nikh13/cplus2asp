@@ -41,34 +41,34 @@ end
 	L, L1, L2,L3			:: loc;
 	G,G1					:: gripper.
 
-caused false if on(B1)=L & on(B2)=L where B1\=B2.
+caused false if on(B1)=L , on(B2)=L where B1\=B2.
 
 default pos(B)=none.
 caused pos(T)=T.
-caused pos(B)=T if on(B)=L & pos(L)=T.
+caused pos(B)=T if on(B)=L , pos(L)=T.
 caused false if pos(B)=none.
 
 caused height(T)=0.
-caused height(B)=I if on(B)=L & height(L)=I-1.
+caused height(B)=I if on(B)=L , height(L)=I-1.
 
 move(G,B,L) causes on(B)=L.
-caused false after move(G,B,L) & move(G,B1,L1) 
+caused false after move(G,B,L) , move(G,B1,L1) 
 	where B\=B1.
 
-caused false after move(G,B,B1) & move(G1,B1,L).
+caused false after move(G,B,B1) , move(G1,B1,L).
 
 
 default -begin_pos(G,L,H).
 default -dest_pos(G,L,H).
 
-caused begin_pos(G,L,I) if move(G,B,L1) & pos(B)=L  & height(B)=I.
-caused dest_pos(G,L,I)  if move(G,B,L1) & pos(L1)=L & height(L)=I-1.
+caused begin_pos(G,L,I) if move(G,B,L1) , pos(B)=L  , height(B)=I.
+caused dest_pos(G,L,I)  if move(G,B,L1) , pos(L1)=L , height(L)=I-1.
 
 
 
 caused false after 
-	  	  begin_pos(left,L,I) & dest_pos(left,L1,I1)
-	  	& begin_pos(left,L2,I2) & dest_pos(left,L3,I3)
+	  	  begin_pos(left,L,I) , dest_pos(left,L1,I1)
+	  	& begin_pos(left,L2,I2) , dest_pos(left,L3,I3)
 	where @plan_path(L,I,L1,I1,L2,I2,L3,I3) = 0.
 
 
@@ -80,8 +80,8 @@ caused false after
 :- query
 	label :: test_lua;
 	maxstep :: 1;
-	0: on(blk(0))=tbl(0) & on(blk(1))=blk(0);
-	0: [\/L \/ L1 \/G \/ G1 | move(G,blk(0),L) & move(G,blk(1),L1)].
+	0: on(blk(0))=tbl(0) , on(blk(1))=blk(0);
+	0: [\/L \/ L1 \/G \/ G1 | move(G,blk(0),L) , move(G,blk(1),L1)].
 
 :- query
 	label :: test_lua2;

@@ -70,6 +70,17 @@
 #include <iomanip>
 #include <exception>
 
+// Next 3 includes are for getting the home directory in linux
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+//Next 3 includes are for reading config files using Boost
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/algorithm/string.hpp>
+
+
 #ifndef BOOST_FILESYSTEM_VERSION
 #define BOOST_FILESYSTEM_VERSION 3
 #endif
@@ -257,7 +268,11 @@ OptionStatus parseCommandOptions(int argc, char const* const* argv, Config& outC
   * @param[out] runconfig The run's configurations that will be updated.
   * @return True if the program should continue execution, false otherwise.
   */
+
+
 bool queryUserForQuery(Config const& config, Config::RunConfig& runconfig, bool first = false);
+
+OptionStatus parseConfigOptions(Config& outConf);
 
 /**
  * Displays the queries which have been found.
@@ -361,40 +376,50 @@ int main(int argc, char** argv)
 	
 	// Process command-line arguments.
 	utils::debug("Parsing Options...", true);
-	switch (parseCommandOptions(argc, argv, config)) {
-	case OPT_STAT_OK:
-		// We're good to go!
-		break;
-	case OPT_STAT_BAD_ARG:
-		utils::error("A problem occurred parsing program arguments. Exiting.", true, 0);
-		showHelp(strEXEName, std::cout);
-		#ifdef DEBUG
-		cleanup(config, ran, selfpath);
-		#else
-		cleanup(config, ran);
-		#endif
-		utils::nice_exit(utils::EXT_CODE_BAD_ARGS,NULL);
-		break;
-	case OPT_STAT_HELP:
-		showHelp(strEXEName, std::cout);
-		#ifdef DEBUG
-		cleanup(config, ran, selfpath);
-		#else
-		cleanup(config, ran);
-		#endif
-		utils::nice_exit(utils::EXT_CODE_GOOD,NULL);
-		break;
-	case OPT_STAT_VERSION:
-		showVersion(strEXEName, std::cout);
-		#ifdef DEBUG
-		cleanup(config, ran, selfpath);
-		#else
-		cleanup(config, ran);
-		#endif
-		utils::nice_exit(utils::EXT_CODE_GOOD,NULL);
-		break;
-	default:
-		break;
+
+	//Read config options from config file and give it lower precedence by executing it first
+	OptionStatus optConf = parseConfigOptions(config);
+	// Read config options from command line
+	OptionStatus optCmd = parseCommandOptions(argc, argv, config);
+
+	if(optCmd != OPT_STAT_OK || optConf != OPT_STAT_OK){
+
+		//Switch on config options from command line because errors in config file would most likely be thrown in parseConfigOptions
+		switch (optCmd) {
+		case OPT_STAT_OK:
+			// We're good to go!
+			break;
+		case OPT_STAT_BAD_ARG:
+			utils::error("A problem occurred parsing program arguments. Exiting.", true, 0);
+			showHelp(strEXEName, std::cout);
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
+			cleanup(config, ran);
+			#endif
+			utils::nice_exit(utils::EXT_CODE_BAD_ARGS,NULL);
+			break;
+		case OPT_STAT_HELP:
+			showHelp(strEXEName, std::cout);
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
+			cleanup(config, ran);
+			#endif
+			utils::nice_exit(utils::EXT_CODE_GOOD,NULL);
+			break;
+		case OPT_STAT_VERSION:
+			showVersion(strEXEName, std::cout);
+			#ifdef DEBUG
+			cleanup(config, ran, selfpath);
+			#else
+			cleanup(config, ran);
+			#endif
+			utils::nice_exit(utils::EXT_CODE_GOOD,NULL);
+			break;
+		default:
+			break;
+		}
 	}
 	
 	/***************************************************************************************************/
@@ -1861,11 +1886,11 @@ Option parseOption(char const* opt, char const*& val) {
 			"-justpost"|"--just-post-processor"		{ return OPT_JUST_POST; }
 			"-justso"|"--just-solver"				{ return OPT_JUST_SO; }
 			"-justtrans"|"--just-translator"		{ return OPT_JUST_TRANS; }
-			"-l"|"--language"						{ return OPT_LANG; }
+			"-l"|"--language"|"language"			{ return OPT_LANG; }
 			"-m="|"--mode="							{ val = opt; return OPT_MODE_SELECT; }
 			"-l="|"--language="						{ val = opt; return OPT_LANG; }
-			"-m"|"--mode"							{ return OPT_MODE_SELECT; }
-			"-max="|"--maxstep="					{ val = opt; return OPT_MAXSTEP; }
+			"-m"|"--mode"|"mode"					{ return OPT_MODE_SELECT; }
+			"-max="|"--maxstep="					{ val = opt;return OPT_MAXSTEP; }
 			"-max"|"--maxstep"						{ return OPT_MAXSTEP; }
 			"-min="|"--minstep="					{ val = opt; return OPT_MINSTEP; }
 			"-min"|"--minstep"						{ return OPT_MINSTEP; }
@@ -1933,6 +1958,118 @@ Option parseOption(char const* opt, char const*& val) {
 			"-togrso"|"--to-grounder-solver"		{ return OPT_UNSUPPORTED; }
 			.										{ return OPT_UNKNOWN; }
 		*/
+}
+
+OptionStatus parseConfigOptions(Config& outConf){
+
+
+	namespace btree = boost::property_tree;
+
+	try{
+		const char *homedir;
+		Config::Mode mode;
+		bool tmpBool;
+
+		if ((homedir = getenv("HOME")) == NULL) {
+		    homedir = getpwuid(getuid())->pw_dir;
+		}
+
+		std::string dir (homedir);
+		btree::ptree pt;
+
+		read_ini(dir.append("/.cplus2asp.config"),pt);	
+
+		for (auto& section:pt){
+			//Check for cplus2asp section
+			if(boost::iequals(section.first, "cplus2asp")){
+				for (auto& key : section.second){
+					char const* tmpptr = key.second.get_value<std::string>().c_str();	
+
+					switch(parseOption(key.first.c_str(), tmpptr)){
+						case OPT_LANG:
+							Config::Language l;
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (!outConf.parseLang(tmpptr, l)) {
+								utils::error("'%s' is not a supported language specification.", 0, true, tmpptr);
+								return OPT_STAT_BAD_ARG;
+							}
+							if (outConf.lang(l)) {
+								utils::warning("Detected a redefition of the input language.",true,tmpptr);
+							}
+							break;
+
+						case OPT_MODE_SELECT:
+							tmpBool = false;
+
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (!strcmp(tmpptr,ARG_MODE_STATIC_MANUAL)) {
+								mode = Config::MODE_STATIC_MANUAL;
+							} else if (!strcmp(tmpptr,ARG_MODE_STATIC_AUTO)) {
+								mode = Config::MODE_STATIC_AUTO;
+							} else if (!strcmp(tmpptr,ARG_MODE_INCREMENTAL)) {
+								mode = Config::MODE_INCREMENTAL;
+							} else if (!strcmp(tmpptr,ARG_MODE_REACTIVE)) {
+								mode = Config::MODE_INCREMENTAL;
+							} else {
+								utils::error("Unexpected value '%s'. Expected a mode option (one of '%s', '%s', '%s', or '%s'). Exiting.",true,0,
+										tmpptr, ARG_MODE_STATIC_AUTO, ARG_MODE_STATIC_MANUAL, ARG_MODE_INCREMENTAL, OPT_MODE_REACTIVE);
+								return OPT_STAT_BAD_ARG;
+							}
+
+							if (outConf.mode(mode)) {
+								utils::warning("Detected a redefinition of the program's running mode. Continuing with value '%s'.", true, tmpptr);
+							}
+
+							break;
+						
+						case OPT_MODE_STATIC_AUTO:
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (outConf.mode(Config::MODE_STATIC_AUTO)) {
+								utils::warning("Detected a redefinition of the program's running mode. Continuing with value 'static-auto'.", true);
+							}
+							break;
+						
+						case OPT_MODE_STATIC_MANUAL:
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (outConf.mode(Config::MODE_STATIC_MANUAL)) {
+								utils::warning("Detected a redefinition of the program's running mode. Continuing with value 'static-manual'.", true);
+							}
+							break;
+						
+						case OPT_MODE_INCREMENTAL:
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (outConf.mode(Config::MODE_INCREMENTAL)) {
+								utils::warning("Detected a redefinition of the program's running mode. Continuing with value 'incremental'", true);
+							}
+							break;
+						
+						case OPT_MODE_REACTIVE:
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (outConf.mode(Config::MODE_REACTIVE)) {
+								utils::warning("Detected a redefinition of the program's running mode. Continuing with value 'reactive'.", true);
+							}
+							break;
+					}
+				}
+			}
+			if(boost::iequals(section.first, "clingo")){
+				for (auto& key : section.second){
+					char const* tmpptr = key.second.get_value<std::string>().c_str();	
+					//TODO
+				}
+			}
+		}
+	}
+
+	catch(const btree::ptree_error &e){
+        std::cout << e.what() << std::endl;
+        return OPT_STAT_BAD_ARG;
+    }
+
+    return OPT_STAT_OK;
+
+    
+
 }
 
 /**
