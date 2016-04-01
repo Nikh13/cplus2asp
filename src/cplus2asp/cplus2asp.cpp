@@ -7207,8 +7207,8 @@ void cleanup(Config config, bool const* ran, bfs::path selfpath){
 	if (config.boolConfigOpt(Config::OPT_DISCARD_F2LP)) {
 		// Discard F2LP intermediates...
 		if (ran[Config::TC_PREPROC]) {
-			bfs::copy_file(F2LP_INPUT_FILE,selfpath.remove_filename().string() + "F2LP_INPUT_FILE",bfs::copy_option::overwrite_if_exists);
-			bfs::copy_file(F2LP_OUTPUT_FILE,selfpath.remove_filename().string() + "F2LP_OUTPUT_FILE",bfs::copy_option::overwrite_if_exists);
+			// bfs::copy_file(F2LP_INPUT_FILE,selfpath.remove_filename().string() + "F2LP_INPUT_FILE",bfs::copy_option::overwrite_if_exists);
+			// bfs::copy_file(F2LP_OUTPUT_FILE,selfpath.remove_filename().string() + "F2LP_OUTPUT_FILE",bfs::copy_option::overwrite_if_exists);
 			bfs::remove(F2LP_INPUT_FILE);
 			bfs::remove(F2LP_OUTPUT_FILE);
 		}
@@ -7219,12 +7219,12 @@ void cleanup(Config config, bool const* ran, bfs::path selfpath){
 	for (int i = 0; i < (int)Config::_TC_LENGTH_; i++) {
 		if (!config.customOut((Config::Toolchain)i)) {
 			utils::debug("Deleting '%s'.", true, config.output((Config::Toolchain)i).c_str());
-			try{
-				bfs::copy_file(config.output((Config::Toolchain)i),selfpath.remove_filename().string() + config.getTextForEnum(i) + std::to_string(i),bfs::copy_option::overwrite_if_exists);
-			}
-			catch(const bfs::filesystem_error& ex){
-				std::cout<<ex.what()<<'\n';
-			}
+			// try{
+				// bfs::copy_file(config.output((Config::Toolchain)i),selfpath.remove_filename().string() + config.getTextForEnum(i) + std::to_string(i),bfs::copy_option::overwrite_if_exists);
+			// }
+			// catch(const bfs::filesystem_error& ex){
+			// 	std::cout<<ex.what()<<'\n';
+			// }
 			bfs::remove(config.output((Config::Toolchain)i));	
 		}
 	}

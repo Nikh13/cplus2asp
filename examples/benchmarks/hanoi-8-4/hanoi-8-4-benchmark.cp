@@ -5,11 +5,11 @@
 
 
 :- macros
-	NUM_DISKS -> 8.
+	NUM_DISKS -> 3.
 
 :- objects
 	1..NUM_DISKS :: disk;
-	p1,p2,p3,p4 :: peg.
+	p1,p2,p3 :: peg.
 
 
 :- constants
@@ -25,7 +25,7 @@
 caused on(D) = L after move(D) = L.
 
 % no concurrency
-nonexecutable move(D)=L & move(D1)=L1 where D\=D1.
+nonexecutable move(D)=L , move(D1)=L1 where D\=D1.
 
 % only move disk to location that doesn't have any other disk on top
 nonexecutable move(D)=L if on(D1)=L where D\=D1.
