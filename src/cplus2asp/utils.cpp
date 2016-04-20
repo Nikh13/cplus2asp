@@ -38,8 +38,6 @@
 #include "utils.h"
 
 
-
-
 namespace utils {
 
 bool isInteger(const char *str)

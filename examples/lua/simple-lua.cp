@@ -1,8 +1,8 @@
 :- begin_lua.
 
-function a()
-return 7
-end
+def a():
+	return 7
+
 
 :- end_lua.
 

@@ -198,6 +198,7 @@ enum StatusFlags
 	TC_STAT_TOOLSKIPPED = INT_MIN,								///< Psuedo return code indicating that the tool execution was skipped for some reason.
 	TC_STAT_SO_CLINGO_FOUND_SOLUTIONS = 10,						///< return code indicating that clingo (or other similar programs) found solutions.
 	TC_STAT_SO_CLINGO_NO_SOLUTIONS = 20,						///< return code indicating that clingo (or other similar programs) failed to find solutions.
+	TC_STAT_SO_CLINGO_SCRIPT_FOUND_SOLUTIONS = 30,						
 	TC_STAT_POSTPROC_AS2TRANSITION_NO_SOLUTIONS = 100,			///< return code indicating that as2transition failed to find solutions.
 	TC_STAT_POSTPROC_AS2TRANSITION_FOUND_SOLUTIONS = 101		///< return code indicating that as2transition found solutions.
 };
@@ -848,7 +849,7 @@ int main(int argc, char** argv)
 				}
 				
 				// check the status and make sure all is well...
-				if (intSystemResult == TC_STAT_SO_CLINGO_FOUND_SOLUTIONS) {
+				if (intSystemResult == TC_STAT_SO_CLINGO_FOUND_SOLUTIONS || intSystemResult == TC_STAT_SO_CLINGO_SCRIPT_FOUND_SOLUTIONS) {
 					// Looks like we have solutions... YAY!
 					blnFoundSolutions = true;
 				} else if (intSystemResult == TC_STAT_SO_CLINGO_NO_SOLUTIONS) {
@@ -1967,18 +1968,23 @@ OptionStatus parseConfigOptions(Config& outConf){
 
 	try{
 		const char *homedir;
-		Config::Mode mode;
-		bool tmpBool;
-
 		if ((homedir = getenv("HOME")) == NULL) {
 		    homedir = getpwuid(getuid())->pw_dir;
 		}
 
 		std::string dir (homedir);
 		btree::ptree pt;
+		char const* tmpptr;
+		size_t tmpoffset;
+		char tmpPath[PATH_MAX];
+		std::list<char const*> rawInputList;
+		std::pair<unsigned int, unsigned int> steps;
+		unsigned int tmpInt;
+		Config::Mode mode;
+		bool tmpBool;
 
 		read_ini(dir.append("/.cplus2asp.config"),pt);	
-
+		
 		for (auto& section:pt){
 			//Check for cplus2asp section
 			if(boost::iequals(section.first, "cplus2asp")){
@@ -1986,6 +1992,211 @@ OptionStatus parseConfigOptions(Config& outConf){
 					char const* tmpptr = key.second.get_value<std::string>().c_str();	
 
 					switch(parseOption(key.first.c_str(), tmpptr)){
+						case OPT_AUTO:
+							// This is supposed to be an automated run, don't ask the user for anything.
+							if (outConf.boolConfigOpt(Config::OPT_SUPPRESS_INTERACTION, true)) {
+								utils::warning("Detected redefinition of option '%s'. Continuing with value '%s'",true,key.second.get_value<std::string>().c_str(),"true");
+							}
+							break;
+						case OPT_BRIDGE:
+							// They are specifying a specific command for the bridge.
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (!tmpptr) {
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a command following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+								}
+							
+
+							if (outConf.command(Config::TC_REACTIVE_BRIDGE, tmpptr)) {
+								utils::warning("Detected redefinition of bridge command. Continuing with value '%s'",true,tmpptr);
+							}
+
+							break;
+						case OPT_BRIDGE_OPTS:
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (!tmpptr) {
+									// setup for a command but they didn't deliver.
+									utils::error("Expected pass-through options following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+								
+							}
+
+							if (outConf.opts(Config::TC_REACTIVE_BRIDGE, tmpptr)) {
+								utils::warning("Detected redefinition of bridge command options. Continuing with value '%s'",true,tmpptr);
+							}
+							break;
+						case OPT_BRIDGE_OUT:
+
+							utils::error("Redirecting the reactive bridge's output is currently unsupported.", true, 0);
+							return OPT_STAT_BAD_ARG;
+
+						case OPT_CONST:
+									tmpptr = key.second.get_value<std::string>().c_str();
+									const char* temp;	
+									// Constant Declaration...
+									if((temp = strchr(tmpptr,'=')) != NULL)
+									{
+										tmpoffset = (size_t)(temp - tmpptr);
+
+										// Get the constant name/value
+										std::string name = std::string(key.second.get_value<std::string>().c_str(), tmpoffset);
+										std::string value = std::string(&(key.second.get_value<std::string>().c_str()[tmpoffset+1]));
+
+										utils::debug("Parsed constant declaration name='%s', value='%s'",true, name.c_str(), value.c_str());
+
+										if (outConf.def(name,value)) {
+											utils::warning("Detected redefinition of constant '%s'. Continuing with value '%s'",true,name.c_str(),value.c_str());
+										}
+
+									} else {   // Set up for a constant without actually giving one, bad command line.
+										utils::error("Expected a constant definition of the form 'constant=value' after option '%s'. Exiting.",true,0,key.first.c_str());
+										return OPT_STAT_BAD_ARG;
+									}
+									break;
+
+						case OPT_FRM_BRIDGE:
+							utils::pragma("Running the toolchain from the reactive bridge is discouraged.",true);
+							if (outConf.setRunFrom(Config::TC_REACTIVE_BRIDGE)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						// case OPT_FRM_GRD:
+						// 	// Don't run anything before the grounder.
+						// 	if (outConf.setRunFrom(Config::TC_GROUNDER)) {
+						// 		utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+						// 	}
+						// 	break;					
+
+						case OPT_FRM_PRE:
+									// Don't run anything before the pre-processor.
+									if (outConf.setRunFrom(Config::TC_PREPROC)) {
+										utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+									}
+									break;	
+
+						case OPT_FRM_POST:
+							// Don't call anything before the post-processor (equivalent to "-justpost")
+							if (outConf.setRunFrom(Config::TC_POSTPROC)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						case OPT_FROM_SO:
+							// Don't run anything before the solver.
+							if (outConf.setRunFrom(Config::TC_SOLVER)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						case OPT_FROM_TRAN:
+							// Don't call anything before the translator (basically a no-op option).
+							if (outConf.setRunFrom(Config::TC_TRANSLATOR)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						// case OPT_GRD:
+						// 	// They're giving us a specific executable to use as the grounder instead of the default.
+						// 	// Make sure a second argument follows, and save the new grounder.
+						// 	tmpptr = key.second.get_value<std::string>().c_str();
+						// 	if (!tmpptr) {
+
+						// 		// setup for a command but they didn't deliver.
+						// 		utils::error("Expected a command following option '%s'. Exiting.",true,0,key.first.c_str());
+						// 		return OPT_STAT_BAD_ARG;
+								
+						// 	}
+
+						// 	if (outConf.command(Config::TC_GROUNDER, tmpptr)) {
+						// 		utils::warning("Detected redefinition of grounder command. Continuing with value '%s'",true,tmpptr);
+						// 	}
+
+						// 	break;
+
+						// case OPT_GRD_OPTS:
+						// 	tmpptr = key.second.get_value<std::string>().c_str();
+						// 	if (!tmpptr) {
+						// 		// setup for options but they didn't deliver
+						// 		utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0, key.first.c_str());
+						// 		return OPT_STAT_BAD_ARG;
+								
+						// 	}
+
+						// 	if (outConf.opts(Config::TC_GROUNDER, tmpptr)) {
+						// 		utils::warning("Detected redefinition of grounder command options. Continuing with value '%s'",true, tmpptr);
+						// 	}
+
+						// 	break;
+
+						// case OPT_GRD_OUT:
+						// 	tmpptr = key.second.get_value<std::string>().c_str();
+						// 	if (!tmpptr) {
+								
+						// 		// setup for a command but they didn't deliver.
+						// 		utils::error("Expected a file name following option '%s'. Exiting.",true,0,key.first.c_str());
+						// 		return OPT_STAT_BAD_ARG;
+							
+						// 	}
+
+						// 	if (outConf.output(Config::TC_GROUNDER, tmpptr)) {
+						// 		utils::warning("Detected redefinition of the grounder output file. Continuing with value '%s'",true, tmpptr);
+						// 	}
+						// 	break;
+
+						case OPT_GRINGO_NONE_HACK:
+							// Specifying a none_hack value.
+							tmpptr = key.second.get_value<std::string>().c_str();
+							if (!tmpptr) {
+								utils::warning("Option '%s' has been deprecated in favor of specifying an explicit none alias value.",true,key.first.c_str());
+
+								tmpptr = DEF_NONE_HACK_VAL;
+							}
+
+
+							if (outConf.strOpt(Config::STR_NONE_ALIAS, tmpptr)) {
+								utils::warning("Detected redefinition of the none alias option. Continuing with value '%s'",true, tmpptr);
+							}
+
+							break;
+
+						// case OPT_JUST_GRD:
+						// 		// Just call the grounder program, no others.
+						// 		if (outConf.setOnlyRun(Config::TC_GROUNDER)) {
+						// 			utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+						// 		}
+						// 		break;
+
+						case OPT_JUST_PRE:
+							// Just call the preprocessor program, no others.
+							if (outConf.setOnlyRun(Config::TC_PREPROC)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						case OPT_JUST_POST:
+							// Just call the postprocessor program, no others.
+							if (outConf.setOnlyRun(Config::TC_POSTPROC)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						case OPT_JUST_SO:
+							// Just call the solver program, no others.
+							if (outConf.setOnlyRun(Config::TC_SOLVER)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						case OPT_JUST_TRANS:
+							// Just call the translator program, no others.
+							if (outConf.setOnlyRun(Config::TC_TRANSLATOR)) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+
 						case OPT_LANG:
 							Config::Language l;
 							tmpptr = key.second.get_value<std::string>().c_str();	
@@ -1996,6 +2207,51 @@ OptionStatus parseConfigOptions(Config& outConf){
 							if (outConf.lang(l)) {
 								utils::warning("Detected a redefition of the input language.",true,tmpptr);
 							}
+							break;
+
+						case OPT_MAXSTEP:
+							tmpptr = key.second.get_value<std::string>().c_str();	
+							if (!tmpptr) {
+							
+									utils::error("Expected a maximum step following option '%s'. Exiting.",true,0, key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+							}
+							
+
+							if ((steps = Config::parseMaxstep(tmpptr)).second == Config::UNDEFINED) {
+								utils::error("'%s' is not a valid step value. Exiting.",true,0, tmpptr);
+								return OPT_STAT_BAD_ARG;
+							} else if (outConf.intConfigOpt(Config::OPT_MAXSTEP, steps.second)
+									|| (steps.first != Config::UNDEFINED && outConf.intConfigOpt(Config::OPT_MINSTEP, steps.first)))
+							{
+								utils::warning("Detected a redefinition of the maximum step. Continuing with the value '%s'.",true,tmpptr);
+							}
+							break;
+
+
+						case OPT_MINSTEP:
+
+							tmpptr = key.second.get_value<std::string>().c_str();
+							if (!tmpptr) {
+
+								utils::error("Expected a minimum step following option '%s'. Exiting.",true,0,key.first.c_str());
+								return OPT_STAT_BAD_ARG;
+							}
+
+					
+							if (!utils::from_string(tmpInt, tmpptr)) {
+								utils::error("'%s' is not a valid step value. Exiting.",true,0, tmpptr);
+								return OPT_STAT_BAD_ARG;
+							} else if (outConf.intConfigOpt(Config::OPT_MINSTEP, tmpInt)) {
+								utils::warning("Detected a redefinition of the minimum step. Continuing with value '%s'.",true,tmpptr);
+							}
+
+							break;
+						case OPT_NO_DOMAIN_ENFORCE:
+							outConf.boolConfigOpt(Config::OPT_NO_DOMAIN_ENFORCE, true);
+							break;
+						case OPT_NO_ADD_DOMAIN_ENFORCE:
+							outConf.boolConfigOpt(Config::OPT_NO_ADD_DOMAIN_ENFORCE, true);
 							break;
 
 						case OPT_MODE_SELECT:
@@ -2049,14 +2305,460 @@ OptionStatus parseConfigOptions(Config& outConf){
 								utils::warning("Detected a redefinition of the program's running mode. Continuing with value 'reactive'.", true);
 							}
 							break;
+
+						case OPT_NO_DEL:
+							tmpBool = false;
+							utils::warning("The option '%s' has been deprecated in favor of the '--[PROG]-output=[OUTFILE] option.", true,key.second.get_value<std::string>().c_str());
+
+							tmpBool = outConf.output(Config::TC_TRANSLATOR, DEF_INT_TRANS_FILE) 
+									|/* non-shortcutting bitwise or */ outConf.output(Config::TC_PREPROC, DEF_INT_PREPROC_FILE)
+
+									| outConf.output(Config::TC_SOLVER, DEF_INT_SO_FILE);
+
+							// Shut off deleting intermediate files.
+							if (tmpBool) {
+								utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							}
+							break;
+
+						case OPT_SHIFT:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									// default true
+									tmpptr = "true";
+								}
+								
+								bool val;
+								if (!strcmp(tmpptr, "true")) {
+									val = true;
+								} else if (!strcmp(tmpptr, "false")) {
+									val = false;
+								} else {
+									utils::error("Invalid shift value. Expected a Boolean value ('true' or 'false'). Exiting.", true, 0, key.second.get_value<std::string>().c_str());
+									return OPT_STAT_BAD_ARG;
+								}
+
+								if (outConf.boolConfigOpt(Config::OPT_SHIFT, val)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+
+								break;
+
+							case OPT_STATS:
+								// Don't include standard files in the final product.
+								if (outConf.boolConfigOpt(Config::OPT_STATS, true)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+
+								break;
+
+							case OPT_PORT_EXTERNAL:
+								// Set the external port to use in reactive mode
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									utils::error("Expected a port number following option '%s'. Exiting.",true,0, key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+
+								if (!utils::from_string(tmpInt, tmpptr) || tmpInt < 1) {
+									utils::error("'%s' is not a valid port. Exiting.",true,0, tmpptr);
+									return OPT_STAT_BAD_ARG;
+								} else if (outConf.intConfigOpt(Config::OPT_EXT_PORT, tmpInt)) {
+									utils::warning("Detected a redefinition of the external port. Continuing with value '%s'.",true,tmpptr);
+								}
+
+								break;
+							case OPT_PORT_INTERNAL:
+								// Set the internal port to use in reactive mode
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+					
+										utils::error("Expected a port number following option '%s'. Exiting.",true,0, key.first.c_str());
+										return OPT_STAT_BAD_ARG;
+									
+								}
+
+								if (!utils::from_string(tmpInt, tmpptr) || tmpInt < 1) {
+									utils::error("'%s' is not a valid port. Exiting.",true,0, tmpptr);
+									return OPT_STAT_BAD_ARG;
+								} else if (outConf.intConfigOpt(Config::OPT_INT_PORT, tmpInt)) {
+									utils::warning("Detected a redefinition of the internal port. Continuing with value '%s'.",true,tmpptr);
+								}
+
+								break;
+
+							case OPT_POSTPROC:
+								// They're giving us a specific executable to use as the post-processor instead of the default.
+								// Make sure a second argument follows, and save the new post-processor.
+								tmpptr = key.second.get_value<std::string>().c_str();
+
+								if (!tmpptr) {
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a command following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+								if (outConf.command(Config::TC_POSTPROC, tmpptr)) {
+									utils::warning("Detected redefinition of post-processor command. Continuing with value '%s'.",true,tmpptr);
+								}
+						
+								break;
+							case OPT_POSTPROC_OPTS:
+
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+
+									// setup for options but they didn't deliver
+									utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0, key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+
+								if (outConf.opts(Config::TC_POSTPROC, tmpptr)) {
+									utils::warning("Detected redefinition of post-processor command options. Continuing with value '%s'",true,tmpptr);
+								}
+
+								break;
+
+							case OPT_POSTPROC_OUT:
+
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a file name following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+								if (outConf.output(Config::TC_POSTPROC, tmpptr)) {
+									utils::warning("Detected redefinition of the post-processor output file. Continuing with value '%s'",true, tmpptr);
+								}
+								break;
+
+							case OPT_PREPROC:
+								// They're giving us a specific executable to use as the pre-processor instead of the default.
+								// Make sure a second argument follows, and save the new pre-processor.
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a command following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+								
+								}
+
+								if (outConf.command(Config::TC_PREPROC, tmpptr)) {
+									utils::warning("Detected redefinition of pre-processor command. Continuing with value '%s'",true,tmpptr);
+								}
+								break;
+
+							case OPT_PREPROC_OPTS:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									
+									// setup for options but they didn't deliver
+									utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0,key.first.c_str() );
+									return OPT_STAT_BAD_ARG;
+								}
+
+
+								if (outConf.opts(Config::TC_PREPROC, tmpptr)) {
+									utils::warning("Detected redefinition of pre-processor command options. Continuing with value '%s'",true,tmpptr);
+								}
+
+								break;
+							case OPT_PREPROC_OUT:
+
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a file name following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+								if (outConf.output(Config::TC_PREPROC, tmpptr)) {
+									utils::warning("Detected redefinition of the pre-processor output file. Continuing with value '%s'",true, tmpptr);
+								}
+								break;
+
+							case OPT_SO:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								// They're giving us a specific executable to use as the solver instead of the default.
+								// Make sure a second argument follows, and save the new solver.
+								if (!tmpptr) {
+										// setup for a command but they didn't deliver.
+										utils::error("Expected a command following option '%s'. Exiting.",true,0,key.first.c_str());
+										return OPT_STAT_BAD_ARG;
+								}
+
+								if (outConf.command(Config::TC_SOLVER, tmpptr)) {
+									utils::warning("Detected redefinition of solver command. Continuing with value '%s'",true,tmpptr);
+								}
+								break;
+
+							case OPT_SO_OPTS:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									// setup for options but they didn't deliver
+									utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0, key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+								}
+
+
+								if (outConf.opts(Config::TC_SOLVER, tmpptr)) {
+									utils::warning("Detected redefinition of solver command options. Continuing with value '%s'",true, tmpptr);
+								}
+
+								break;
+
+							case OPT_SO_OUT:
+								tmpptr = key.second.get_value<std::string>().c_str();
+
+								if (!tmpptr) {
+									
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a file name following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+								if (outConf.output(Config::TC_SOLVER, tmpptr)) {
+									utils::warning("Detected redefinition of the solver output file. Continuing with value '%s'",true, tmpptr);
+								}
+								break;
+
+							case OPT_SYMTAB:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									
+									utils::error("Expected a file name following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+								}
+
+								if (outConf.strOpt(Config::STR_SYMTAB_FILE, tmpptr)) {
+									utils::warning("Detected redefinition of the symbol table file. Continuing with value '%s'",true, tmpptr);
+								}
+								break;
+
+
+							case OPT_TO_BRIDGE:
+								if (outConf.setRunTo(Config::TC_REACTIVE_BRIDGE)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+								break;
+
+							// case OPT_TO_GRD:
+							// 	// Shut off deleting intermediate files.
+							// 	if (outConf.setRunTo(Config::TC_GROUNDER)) {
+							// 		utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+							// 	}
+							// 	break;
+
+							case OPT_TO_PRE:
+								// Run everything up to the pre-processor.
+								if (outConf.setRunTo(Config::TC_PREPROC)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+								break;
+
+							case OPT_TO_POST:
+								// Run everything up to the post-processor...
+								if (outConf.setRunTo(Config::TC_POSTPROC)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+								break;
+
+							case OPT_TO_SO:
+								// Run everything up to the solver...
+								if (outConf.setRunTo(Config::TC_SOLVER)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+								break;
+
+							case OPT_TO_TRANS:
+								// Run everything up to the translator...
+								if (outConf.setRunTo(Config::TC_TRANSLATOR)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,key.second.get_value<std::string>().c_str());
+								}
+								break;
+							case OPT_TRANS:
+								// They're giving us a specific executable to use as the translator instead of the default.
+								// Make sure a second argument follows, and save the new grounder.
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a command following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+
+								if (outConf.command(Config::TC_TRANSLATOR, tmpptr)) {
+									utils::warning("Detected redefinition of translator command. Continuing with value '%s'.",true,tmpptr);
+								}
+
+								break;
+
+							case OPT_TRANS_OPTS:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									// setup for options but they didn't deliver
+									utils::error("Expected pass-through options following the option '%s'. Exiting.", true, 0, key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+
+								if (outConf.opts(Config::TC_TRANSLATOR, tmpptr)) {
+									utils::warning("Detected redefinition of translator command options. Continuing with value '%s'.",true,tmpptr);
+								}
+
+								break;
+							case OPT_TRANS_OUT:
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									// setup for a command but they didn't deliver.
+									utils::error("Expected a file name following option '%s'. Exiting.",true,0,key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+
+								if (outConf.output(Config::TC_TRANSLATOR, tmpptr)) {
+									utils::warning("Detected redefinition of the translator output file. Continuing with value '%s'",true, tmpptr);
+								}
+								break;
+
+							case OPT_VERSION:
+								return OPT_STAT_VERSION;
+
+							case OPT_HELP:
+								return OPT_STAT_HELP;
+
+							case OPT_QUERY:
+								tmpBool = false;
+								tmpptr = key.second.get_value<std::string>().c_str();
+								if (!tmpptr) {
+									tmpBool = true;
+									utils::error("Expected a query identifier following option '%s'. Exiting.",true,0, key.first.c_str());
+									return OPT_STAT_BAD_ARG;
+									
+								}
+								if (outConf.strOpt(Config::STR_QUERY, tmpptr)) {
+									utils::warning("The option '%s' has overridden one or more previous choices.",true,(tmpBool) ? key.first.c_str() : key.second.get_value<std::string>().c_str());
+								}
+								break;
+
+							case OPT_UNSUPPORTED:
+								// Whatever this is, it's unsupported.
+								utils::warning("The '%s' option is no longer supported. It will be ignored.",true,key.second.get_value<std::string>().c_str());
+								break;
+							case OPT_UNSUPPORTED_NO_STD:
+								// they want us to not include the standard file...
+								// we don't use a standard file anymore.
+								utils::warning("The '%s' option is no longer supported as standard files are no longer used.", true, key.second.get_value<std::string>().c_str());
+								break;
+
+							case OPT_UNSUPPORTED_ADDITIVE:
+								// They want us to include the additive standard file...
+								utils::warning("The '%s' option is no longer supported as standard files are no longer used.",true,key.second.get_value<std::string>().c_str());
+								break;
+
+							case OPT_UNSUPPORTED_GRSO:
+								// They did something involving the explicit grounder/solver
+								// We no longer support the explicit grounder/solver calls
+								utils::error("The '%s' option is no longer supported. We no longer use a dedicated grounder/solver in the toolchain. Please make use of the solver component instead.",true,0,key.second.get_value<std::string>().c_str());
+
+								// We probably aren't going to do what they want, go ahead and signal that something went wrong
+								return OPT_STAT_BAD_ARG;
+
+							case OPT_UNSUPPORTED_MANUAL_MAXSTEP:
+								// Manually advance the maximum step of the program query
+								utils::error("The '%s' option is no longer supported. Please use that '--mode=static-manual' option instead.",true,0,key.second.get_value<std::string>().c_str());
+								break;
+
+							case OPT_UNKNOWN:
+								utils::debug("The option isn't a recognized flag. Checking other possibilities.", true);
+								if (key.second.get_value<std::string>().c_str()[0] == '-')
+								{
+									// It appears to be a bad argument...
+									utils::error("Found an unrecognized argument '%s'. Exiting.",true,0,key.second.get_value<std::string>().c_str());
+									return OPT_STAT_BAD_ARG;
+								}
+
+								// If there's no "header" on the argument, it's either a constant declaration, an input file, or the number of solutions.
+								else if(!strcmp(key.second.get_value<std::string>().c_str(), "all") || !strcmp(key.second.get_value<std::string>().c_str(), "ALL")) {
+									if (outConf.intConfigOpt(Config::OPT_NUM_SOLN, 0)) {
+										utils::warning("Detected the redefinition of the number of solutions. Continuing with '%s'.",true,key.second.get_value<std::string>().c_str());
+									}
+								}
+								else if(utils::isInteger(key.second.get_value<std::string>().c_str()))
+								{	// It looks like a number, atoi it and save that as the desired number of solutions.
+									int numSolutions = atoi(key.second.get_value<std::string>().c_str());
+									if(numSolutions < 0) {
+										utils::warning("The number of solutions cannot be negative. Ignoring the argument.",true);
+									} else {
+										if (outConf.intConfigOpt(Config::OPT_NUM_SOLN, (unsigned int)numSolutions)) {
+											utils::warning("Detected the redefinition of the number of solutions. Continuing with '%s'.",true,key.second.get_value<std::string>().c_str());
+										}
+									}
+								}
+								else if((tmpptr = strchr(key.second.get_value<std::string>().c_str(),'=')) != NULL)
+								{   // Found an equals sign in the argument, it's probably a "const=value" declaration.
+									tmpoffset = (size_t)(tmpptr - key.second.get_value<std::string>().c_str());
+
+									// Get the constant name/value
+									std::string name = std::string(key.second.get_value<std::string>().c_str(), tmpoffset);
+									std::string value = std::string(&(key.second.get_value<std::string>().c_str()[tmpoffset+1]));
+
+									utils::debug("Parsed constant declaration name='%s', value='%s'",true, name.c_str(), value.c_str());
+
+									if (outConf.def(name,value)) {
+										utils::warning("Detected redefinition of constant '%s'. Continuing with value '%s'",true,name.c_str(),value.c_str());
+									}
+								}
+								else
+								{	// If it's not a number, it's probably an input file. Make sure it exists, and then save it to the list.
+
+									if(realpath(key.second.get_value<std::string>().c_str(), tmpPath) == NULL)
+									{
+										// Couldn't find the input file...
+										utils::error("Unable to locate input file '%s'. Exiting.",true,0,key.second.get_value<std::string>().c_str());
+										return OPT_STAT_BAD_ARG;
+									}
+									else
+									{
+										// Save all of the input files until we are done and can handle them...
+										rawInputList.push_back(key.second.get_value<std::string>().c_str());
+									}
+								}
+								break;
+
+
+
 					}
 				}
 			}
-			if(boost::iequals(section.first, "clingo")){
-				for (auto& key : section.second){
-					char const* tmpptr = key.second.get_value<std::string>().c_str();	
-					//TODO
-				}
+		}
+
+
+		utils::debug("Handling input files...", true);
+		if (!rawInputList.size()) {
+			//uh-oh. They didn't specify any input files. This simply won't do.
+			utils::error("One or more input files must be specified.",true,0);
+			return OPT_STAT_BAD_ARG;
+		}
+
+		// They've insisted on sticking with a given mode. Make sure they're aware if they're using an incompatible
+		for (std::list<char const*>::iterator it = rawInputList.begin(); it != rawInputList.end(); it++) {
+			Config::FileType type = outConf.addInput(*it);
+			if (outConf.customMode() && type.known && !(type.runningMode & outConf.mode())) {
+				utils::warning("The file '%s' doesn't appear to be compatible with the current running mode.",true,*it);
 			}
 		}
 	}
@@ -2783,8 +3485,8 @@ void cleanup(Config const& config, bool const* ran) {
 	if (config.boolConfigOpt(Config::OPT_DISCARD_F2LP)) {
 		// Discard F2LP intermediates...
 		if (ran[Config::TC_PREPROC]) {
-			bfs::remove(F2LP_INPUT_FILE);
-			bfs::remove(F2LP_OUTPUT_FILE);
+			// bfs::remove(F2LP_INPUT_FILE);
+			// bfs::remove(F2LP_OUTPUT_FILE);
 		}
 	}
 
@@ -2793,7 +3495,7 @@ void cleanup(Config const& config, bool const* ran) {
 	for (int i = 0; i < (int)Config::_TC_LENGTH_; i++) {
 		if (!config.customOut((Config::Toolchain)i)) {
 			utils::debug("Deleting '%s'.", true, config.output((Config::Toolchain)i).c_str());
-			bfs::remove(config.output((Config::Toolchain)i));	
+			// bfs::remove(config.output((Config::Toolchain)i));	
 		}
 	}
 }

@@ -34,6 +34,8 @@
 #include <iostream>
 #include <sstream>
 
+#define DEBUG
+
 namespace utils {
 
 /// A list of possible exit codes...

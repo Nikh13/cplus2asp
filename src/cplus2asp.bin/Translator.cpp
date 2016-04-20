@@ -563,6 +563,18 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 		}
 		break;
 
+     case st::Statement::Type::PYTHON:
+		{	
+			assertIPart(IPart::BASE);
+			config()->out() << "% --------- begin Python Block --------- %" << std::endl; 
+			config()->out() << "#begin_python" << std::endl; 
+			config()->out() << *((st::LUABlock const*)stmt)->value()->str() << std::endl;
+			config()->out() << "#end_python." << std::endl; 
+			config()->out() << "% --------- end LUA Block --------- %" << std::endl; 
+
+		}
+		break;
+
 		// --------------------------------------------------------------------------------------------
 
      case st::Statement::Type::ASP:
@@ -2559,6 +2571,28 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 				out << "#spatom{" << luaobj << "}";
 			}
 			break;
+
+		case el::Term::Type::PYTHON:
+			{
+				std::stringstream tmpout;
+
+				u::ref_ptr<const el::PyTerm> lt = (el::PyTerm const*)t;
+				
+				tmpout << "@" << *lt->base();
+				tmpout << "(";
+				HANDLE_ARGS(lt, c, tmpout, false, false);
+				tmpout << ")";
+				std::string luaobj = tmpout.str();
+				tmpout.str("");
+
+				_computed = true;
+				tmpout << "#spatom{s_computed(" << luaobj << ")}.";
+				c->addPreStmt(tmpout.str(), IPart::BASE);
+
+				out << "#spatom{" << luaobj << "}";
+
+			}
+		break;
 
 		case el::Term::Type::ANON_VAR:
 			{

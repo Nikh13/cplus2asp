@@ -42,6 +42,7 @@ private:
 	bool traverse(bcplus::elements::BinaryTerm const* node, t& ret);
 	bool traverse(bcplus::elements::UnaryTerm const* node, t& ret);
 	bool traverse(bcplus::elements::LuaTerm const* node, t& ret);
+	bool traverse(bcplus::elements::PyTerm const* node, t& ret);
 	bool traverse(bcplus::elements::AnonymousVariable const* node, t& ret);
 	bool traverse(bcplus::elements::Object const* node, t& ret);
 	bool traverse(bcplus::elements::Variable const* node, t& ret);
@@ -68,6 +69,7 @@ protected:
 	virtual bool _apply(bcplus::elements::BinaryTerm const* node, t& ret);
 	virtual bool _apply(bcplus::elements::UnaryTerm const* node, t& ret);
 	virtual bool _apply(bcplus::elements::LuaTerm const* node, t& ret);
+	virtual bool _apply(bcplus::elements::PyTerm const* node, t& ret);
 	virtual bool _apply(bcplus::elements::AnonymousVariable const* node, t& ret);
 	virtual bool _apply(bcplus::elements::Object const* node, t& ret);
 	virtual bool _apply(bcplus::elements::Variable const* node, t& ret);

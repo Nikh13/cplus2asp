@@ -22,6 +22,9 @@
 	L, L1 :: loc.
 
 % after moving disk it is at new place
+% Fluent Dynamic law of type(3) caused F if G after H where F is a fluent formula.
+% on(D) is a fluent formula so it will have 0:c=v <= 0:c=v 
+% We write {0:c(v)}
 caused on(D) = L after move(D) = L.
 
 % no concurrency
