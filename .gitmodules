@@ -3,7 +3,7 @@
 	url = git://github.com/babb517/as2transition
 [submodule "externals/bcplusparser"]
 	path = externals/bcplusparser
-	url = git://github.com/babb517/bcplusparser
+	url = git://github.com/samidhtalsania/bcplusparser
 [submodule "src/f2lp_wrapper"]
 	path = src/f2lp_wrapper
 	url = https://github.com/samidhtalsania/f2lp_wrapper
