@@ -97,14 +97,14 @@ AC_ARG_ENABLE([relpath],
 
 # BOOST Libraries
 
-if [ test "x$portable" == x"true" ]
-then
-	rt_type="s"
-else
-	rt_type=""
-fi
+#if [ test "x$portable" == x"true" ]
+#then
+#	rt_type="s"
+#else
+#	rt_type=""
+#fi
 
-
+rt_type="s"
  
 BOOST_REQUIRE([1.44])
 BOOST_ASIO([$rt_type])							# Required by acplusbridge
@@ -119,22 +119,22 @@ BOOST_REGEX([$rt_type])							# Required by clingo3to4
 BOOST_PROGRAM_OPTIONS([$rt_type])				# Required by clingo3to4
 
 # Static linking appears to be problematic with the boost timers.
-if [ test "x$portable" != x"true" ]
-then
+#if [ test "x$portable" != x"true" ]
+#then
 
-	BOOST_FIND_HEADER(
-		["boost/timer/timer.hpp"], 
-		[
-			AC_MSG_WARN(["Could not locate the boost timer library. Some benchmarking functions will be disabled."])
-			AM_CONDITIONAL([HAVE_BOOST_TIMER],[test "x" == "y" ])
-		],
-		[
-			BOOST_TIMER([$rt_type])
-			AM_CONDITIONAL([HAVE_BOOST_TIMER],[test "x" == "x"])
-		])
-else
-	AM_CONDITIONAL([HAVE_BOOST_TIMER],[test "x" == "y" ])
-fi
+#	BOOST_FIND_HEADER(
+#		["boost/timer/timer.hpp"], 
+#		[
+#			AC_MSG_WARN(["Could not locate the boost timer library. Some benchmarking functions will be disabled."])
+#			AM_CONDITIONAL([HAVE_BOOST_TIMER],[test "x" == "y" ])
+#		],
+#		[
+#			BOOST_TIMER([$rt_type])
+#			AM_CONDITIONAL([HAVE_BOOST_TIMER],[test "x" == "x"])
+#		])
+#else
+#	AM_CONDITIONAL([HAVE_BOOST_TIMER],[test "x" == "y" ])
+#fi
 
 
 # Other libraries

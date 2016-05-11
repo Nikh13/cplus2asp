@@ -4,9 +4,9 @@ bin_PROGRAMS = bcbridge
 
 bcbridge_CPPFLAGS = $(BOOST_CPPFLAGS) -I$(top_srcdir)/src/
 
-if HAVE_BOOST_TIMER
-bcbridge_CPPFLAGS += -DBOOST_TIMER
-endif
+#if HAVE_BOOST_TIMER
+#bcbridge_CPPFLAGS += -DBOOST_TIMER
+#endif
 
 bcbridge_SOURCES = \
 	main.cpp \

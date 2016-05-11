@@ -3485,8 +3485,8 @@ void cleanup(Config const& config, bool const* ran) {
 	if (config.boolConfigOpt(Config::OPT_DISCARD_F2LP)) {
 		// Discard F2LP intermediates...
 		if (ran[Config::TC_PREPROC]) {
-			// bfs::remove(F2LP_INPUT_FILE);
-			// bfs::remove(F2LP_OUTPUT_FILE);
+			bfs::remove(F2LP_INPUT_FILE);
+			bfs::remove(F2LP_OUTPUT_FILE);
 		}
 	}
 
@@ -3495,7 +3495,7 @@ void cleanup(Config const& config, bool const* ran) {
 	for (int i = 0; i < (int)Config::_TC_LENGTH_; i++) {
 		if (!config.customOut((Config::Toolchain)i)) {
 			utils::debug("Deleting '%s'.", true, config.output((Config::Toolchain)i).c_str());
-			// bfs::remove(config.output((Config::Toolchain)i));	
+			bfs::remove(config.output((Config::Toolchain)i));	
 		}
 	}
 }
