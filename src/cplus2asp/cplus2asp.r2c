@@ -112,7 +112,7 @@ namespace bcp = bcplus;
 namespace sy = bcplus::symbols;
 
 #define VERSION_MAJOR 3
-#define VERSION_MINOR 0
+#define VERSION_MINOR 1
 #define VERSION_REV 0
 
 #ifndef PATH_MAX
@@ -2764,7 +2764,7 @@ OptionStatus parseConfigOptions(Config& outConf){
 	}
 
 	catch(const btree::ptree_error &e){
-        std::cout << e.what() << std::endl;
+        utils::debug(e.what(),true);
         return OPT_STAT_BAD_ARG;
     }
 
