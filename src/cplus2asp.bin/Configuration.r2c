@@ -19,11 +19,11 @@ namespace cplus2asp {
 namespace cplus2asp_bin {
 
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_zero				= new ReferencedString("0");
-const u::ref_ptr<const ReferencedString> Configuration::s_ts_static_incr		= new ReferencedString("t");
+const u::ref_ptr<const ReferencedString> Configuration::s_ts_static_incr		= new ReferencedString("ST");
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_static_static		= new ReferencedString("ST");
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_dynamic_incr		= s_ts_static_incr;
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_dynamic_static		= new ReferencedString("AT");
-const u::ref_ptr<const ReferencedString> Configuration::s_ts_action_incr		= new ReferencedString("t-1");
+const u::ref_ptr<const ReferencedString> Configuration::s_ts_action_incr		= new ReferencedString("ST-1");
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_action_static		= new ReferencedString("AT-1");
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_maxstep_incr		= s_ts_static_incr;
 const u::ref_ptr<const ReferencedString> Configuration::s_ts_maxstep_static		= new ReferencedString("maxstep");

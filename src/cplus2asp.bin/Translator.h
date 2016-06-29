@@ -139,6 +139,8 @@ public:
 	/// @param stmt The statement to translate
 	/// @return true if successful, false otherwise
 	bool translate(bcplus::statements::Statement const* stmt);
+
+	bool initialDeclarations(bcplus::statements::Statement const* stmt);
 		
 
 private:

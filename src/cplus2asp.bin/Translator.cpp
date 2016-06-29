@@ -37,6 +37,8 @@ namespace sy = bcplus::symbols;
 namespace el = bcplus::elements;
 namespace u = babb::utils;
 
+bool sortDone = false;
+
 
 #define HANDLE_ARGS(id, context, out, parens, comma)\
 	if (id->arity()) {										\
@@ -79,6 +81,32 @@ namespace u = babb::utils;
 				if (comma) out << ", ";								\
 			}														\
 	}
+
+#define HANDLE_CONST_ARGS_6(id, context, out, parens, comma, setArgs)\
+	{																\
+			if (id->arity()) {										\
+				if (parens) out << "(";								\
+				std::stringstream tmp;								\
+				bool first = true;									\
+				ClauseList::const_iterator it;						\
+				if (setArgs) it = (setArgs)->begin();				\
+				BOOST_FOREACH(sy::SortSymbol const* sort, *id) {	\
+					if (!first) out << ", ";						\
+					first = false;									\
+																	\
+					if (setArgs && it != (setArgs)->end()) {		\
+						out << *it++;								\
+					} else {										\
+																	\
+						out << *sort->base();				\
+																	\
+					}												\
+				}													\
+				if (parens) out << ")";								\
+				if (comma) out << ", ";								\
+			}														\
+	}
+
 #define HANDLE_PRESTMTS 											\
 	{																\
 		IPart::type ipart = _ipart;									\
@@ -365,6 +393,67 @@ void Translator::epilogue() {
 }
 
 
+bool Translator::initialDeclarations(bcplus::statements::Statement const* stmt) {
+
+	// bool ret = true;
+	// std::stringstream tmpout;
+	// u::ref_ptr<StatementList> preStmts = new StatementList();
+	// u::ref_ptr<ClauseList> extraClauses = new ClauseList(); 
+	// u::ref_ptr<Context> context = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses, NULL, false);
+	
+	config()->out() << std::endl
+							<< "% Sort Declarations ---------------------------------------------------" << std::endl
+							<< ":- sorts"<< std::endl
+							<< "step;astep.";
+
+	// u::ref_ptr<const st::SortDeclaration> decls = (st::SortDeclaration const*) stmt;
+	// u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+
+	// if(decls != NULL){
+	// 	BOOST_FOREACH(sy::SortSymbol const* sort, *decls) {
+	// 		config()->out() << ";"<< *sort->base();
+	// 		//translateSortDeclaration(sort, c);
+	// 	}
+	// }
+	// HANDLE_PRESTMTS;	
+	
+	// config()->out() << "." <<std::endl 
+	// 				<< "% ---------------------------------------------------------------------" << std::endl 
+	// 				<< std::endl;
+
+	// config()->out() << std::endl 
+	// 				<< "% Variable Declarations -----------------------------------------------" << std::endl
+	// 				<< ":- variables"<< std::endl
+	// 				<< "ST::step";
+
+	// u::ref_ptr<const st::VariableDeclaration> declv = (st::VariableDeclaration const*) stmt;
+
+	// if(declv!=NULL){
+	// 	BOOST_FOREACH(sy::VariableSymbol const* var, *declv) {
+	// 		// sy::SortSymbol const* sort = var->sort();
+	// 		// config()->out() << ";"<< std::endl;
+	// 		// config()->out()	<<*var->base();
+	// 		// config()->out()	<<"::"<<*sort->base();
+
+	// 		// assertIPart(IPart::BASE);
+	// 		// // handle dynamic sort declarations
+	// 		// translateSortDeclaration(var->sort(), c);
+	// 		// HANDLE_PRESTMTS;
+
+	// 		// config()->out() << "#domain ";
+	// 		// translate(var->sort(), config()->out());
+	// 		// config()->out() << "(";
+	// 		// translate(var, config()->out());
+	// 		// config()->out() << ")." << std::endl;
+
+	// 	}
+	// }
+	
+	// config()->out() << "." <<std::endl 
+	// 				<< "% ---------------------------------------------------------------------" << std::endl 
+	// 				<< std::endl;
+}
+
 
 bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
@@ -381,8 +470,6 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 	u::ref_ptr<Context> context = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses, NULL, false);
 
 
-
-
 	switch (stmt->type()) {
      case st::Statement::Type::INCLUDE:
      case st::Statement::Type::MACROS:
@@ -393,6 +480,10 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
      case st::Statement::Type::CONSTANTS:
 		{
+			if(!sortDone){
+				initialDeclarations(stmt);
+				sortDone = true;
+			}
 
 			config()->out() << std::endl 
 							<< "% Constant Declarations -----------------------------------------------" << std::endl
@@ -401,6 +492,22 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 			u::ref_ptr<const st::ConstantDeclaration> decl = (st::ConstantDeclaration const*) stmt;
 			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+
+			config()->out() << std::endl 
+					<< ":- constants";
+
+			BOOST_FOREACH(sy::ConstantSymbol const* sym, *decl) {
+				sy::SortSymbol const* sort = sym->sort();
+				config()->out() << std::endl;
+				translate(sym, c, config()->out(), true) && ret;
+				// config()->out()	<<*var->base();
+				config()->out()	<<"::"<<*sort->base();
+				config()->out() << ";";
+			}
+
+			config()->out() << "\b." <<std::endl 
+					<< "% ---------------------------------------------------------------------" << std::endl 
+					<< std::endl;
 
 
 			BOOST_FOREACH(sy::ConstantSymbol const* sym, *decl) {
@@ -472,21 +579,23 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
      case st::Statement::Type::SORTS:
 		{
-			config()->out() << std::endl
-							<< "% Sort Declarations ---------------------------------------------------" << std::endl
-							<< std::endl;
+			// config()->out() << std::endl
+			// 				<< "% Sort Declarations ---------------------------------------------------" << std::endl
+			// 				<< ":- sorts"<< std::endl
+			// 				<< "step;astep";
 
-			u::ref_ptr<const st::SortDeclaration> decl = (st::SortDeclaration const*) stmt;
-			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+			// u::ref_ptr<const st::SortDeclaration> decl = (st::SortDeclaration const*) stmt;
+			// u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
 
-			BOOST_FOREACH(sy::SortSymbol const* sort, *decl) {
-				translateSortDeclaration(sort, c);
-			}
-			HANDLE_PRESTMTS;
+			// BOOST_FOREACH(sy::SortSymbol const* sort, *decl) {
+			// 	config()->out() << ";"<< *sort->base();
+			// 	//translateSortDeclaration(sort, c);
+			// }
+			// HANDLE_PRESTMTS;
 			
-			config()->out() << std::endl 
-							<< "% ---------------------------------------------------------------------" << std::endl 
-							<< std::endl;
+			// config()->out() << "." <<std::endl 
+			// 				<< "% ---------------------------------------------------------------------" << std::endl 
+			// 				<< std::endl;
 
 		}
 		break;
@@ -495,29 +604,29 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
      case st::Statement::Type::VARIABLES:
 		{
-			config()->out() << std::endl 
-							<< "% Variable Declarations -----------------------------------------------" << std::endl
-							<< std::endl;
+			// config()->out() << std::endl 
+			// 				<< "% Variable Declarations -----------------------------------------------" << std::endl
+			// 				<< std::endl;
 
-			u::ref_ptr<const st::VariableDeclaration> decl = (st::VariableDeclaration const*) stmt;
-			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+			// u::ref_ptr<const st::VariableDeclaration> decl = (st::VariableDeclaration const*) stmt;
+			// u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
 
-			BOOST_FOREACH(sy::VariableSymbol const* var, *decl) {
-				assertIPart(IPart::BASE);
-				// handle dynamic sort declarations
-				translateSortDeclaration(var->sort(), c);
-				HANDLE_PRESTMTS;
+			// BOOST_FOREACH(sy::VariableSymbol const* var, *decl) {
+			// 	assertIPart(IPart::BASE);
+			// 	// handle dynamic sort declarations
+			// 	translateSortDeclaration(var->sort(), c);
+			// 	HANDLE_PRESTMTS;
 
-				config()->out() << "#domain ";
-				translate(var->sort(), config()->out());
-				config()->out() << "(";
-				translate(var, config()->out());
-				config()->out() << ")." << std::endl;
-			}
+			// 	config()->out() << "#domain ";
+			// 	translate(var->sort(), config()->out());
+			// 	config()->out() << "(";
+			// 	translate(var, config()->out());
+			// 	config()->out() << ")." << std::endl;
+			// }
 			
-			config()->out() << std::endl 
-							<< "% ---------------------------------------------------------------------" << std::endl 
-							<< std::endl;
+			// config()->out() << std::endl 
+			// 				<< "% ---------------------------------------------------------------------" << std::endl 
+			// 				<< std::endl;
 
 
 		}
@@ -803,9 +912,9 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 					
 						HANDLE_PRESTMTS
 						config()->out() << "<- ";
-						config()->out() << "not (" << tmpout.str();
+						config()->out() << "not " << tmpout.str();
 						HANDLE_CLAUSES(config()->out(), false, false);
-						config()->out() << ") & query_label(q_" << *(q->symbol()->base()) << ") & maxstep == 0." << std::endl;
+						config()->out() << " & query_label(q_" << *(q->symbol()->base()) << ") & maxstep == 0." << std::endl;
 						tmpout.str("");
 					}
 					
@@ -817,9 +926,9 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 				HANDLE_PRESTMTS
 				config()->out() << "<- ";
-				config()->out() << "not (" << tmpout.str();
+				config()->out() << "not " << tmpout.str();
 				HANDLE_CLAUSES(config()->out(), false, false);
-				config()->out() << ") & query_label(q_" << *(q->symbol()->base()) << ")." << std::endl;
+				config()->out() << " & query_label(q_" << *(q->symbol()->base()) << ")." << std::endl;
 				tmpout.str("");
 			}
 		}
@@ -1470,47 +1579,47 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 	const bool rigid  = sym->constType() & sy::ConstantSymbol::Type::RIGID;
 	const bool additive  = sym->constType() & sy::ConstantSymbol::Type::M_ADDITIVE;
 
-	if (fluent || rigid) {
-		ReferencedString const* newvar = newVar(sym->sort(), c, false);
-		u::ref_ptr<Context> bc = c->mkPos(Context::Position::AGGR, IPart::BASE, true);
-		bc = bc->mkTime(config()->ts(Configuration::TS::ZERO));
+	// if (fluent || rigid) {
+	// 	ReferencedString const* newvar = newVar(sym->sort(), c, false);
+	// 	u::ref_ptr<Context> bc = c->mkPos(Context::Position::AGGR, IPart::BASE, true);
+	// 	bc = bc->mkTime(config()->ts(Configuration::TS::ZERO));
 		
-		tmpout << "<- not 1{ ";
-		ret = translate_eq(sym, *newvar, bc, tmpout) && ret;
-		tmpout << " : ";
-		translate(sym->sort(), tmpout);
-		tmpout << "(" << *newvar << ")}1";
-		HANDLE_CLAUSES_6(tmpout, true, true, false, " & ", true);
+	// 	tmpout << "<- not 1{ ";
+	// 	ret = translate_eq(sym, *newvar, bc, tmpout) && ret;
+	// 	tmpout << " : ";
+	// 	translate(sym->sort(), tmpout);
+	// 	tmpout << "(" << *newvar << ")}1";
+	// 	HANDLE_CLAUSES_6(tmpout, true, true, false, " & ", true);
 
-		if (ret) {
-			nextStmt(c, tmpout.str(), IPart::BASE);
-		}
-		tmpout.str("");
-	}
+	// 	if (ret) {
+	// 		nextStmt(c, tmpout.str(), IPart::BASE);
+	// 	}
+	// 	tmpout.str("");
+	// }
 
 
-	if (!rigid) {
-		ReferencedString const* newvar = newVar(sym->sort(), c, false);
-		u::ref_ptr<Context> ic = c->mkPos(Context::Position::AGGR, IPart::CUMULATIVE, true);
+	// if (!rigid) {
+	// 	ReferencedString const* newvar = newVar(sym->sort(), c, false);
+	// 	u::ref_ptr<Context> ic = c->mkPos(Context::Position::AGGR, IPart::CUMULATIVE, true);
 
-		if (action) {
-			ic = ic->mkTime(config()->ts(Configuration::TS::ACTION));
-		} else {
-			ic = ic->mkTime(config()->ts(Configuration::TS::DYNAMIC));
-		}
+	// 	if (action) {
+	// 		ic = ic->mkTime(config()->ts(Configuration::TS::ACTION));
+	// 	} else {
+	// 		ic = ic->mkTime(config()->ts(Configuration::TS::DYNAMIC));
+	// 	}
 		
-		tmpout << "<- not 1{ ";
-		ret = translate_eq(sym, *newvar, ic, tmpout) && ret;
-		tmpout << " : ";
-		translate(sym->sort(), tmpout);
-		tmpout << "(" << *newvar << ")}1";
-		HANDLE_CLAUSES_6(tmpout, true, true, false, " & ", true);
+	// 	tmpout << "<- not 1{ ";
+	// 	ret = translate_eq(sym, *newvar, ic, tmpout) && ret;
+	// 	tmpout << " : ";
+	// 	translate(sym->sort(), tmpout);
+	// 	tmpout << "(" << *newvar << ")}1";
+	// 	HANDLE_CLAUSES_6(tmpout, true, true, false, " & ", true);
 
-		if (ret) {
-			nextStmt(c, tmpout.str(), IPart::CUMULATIVE);
-		}
-		tmpout.str("");
-	}
+	// 	if (ret) {
+	// 		nextStmt(c, tmpout.str(), IPart::CUMULATIVE);
+	// 	}
+	// 	tmpout.str("");
+	// }
 
 	// All actions in BC are exogenous...
 	sy::ConstantSymbol::Type::type symtype = sym->constType();
@@ -1792,55 +1901,55 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 
 
 	// Constant domain restriction (if applicable)
-	if ((!additive && config()->enforceDomain()) || (additive && config()->enforceAdditiveDomain())) {
+// 	if ((!additive && config()->enforceDomain()) || (additive && config()->enforceAdditiveDomain())) {
 
 
-		u::ref_ptr<ClauseList> args = new ClauseList();
-		BOOST_FOREACH(sy::SortSymbol const* sort, *sym) {
-			args->push_back(*newVar(sort, c));
-		}
+// 		u::ref_ptr<ClauseList> args = new ClauseList();
+// 		BOOST_FOREACH(sy::SortSymbol const* sort, *sym) {
+// 			args->push_back(*newVar(sort, c));
+// 		}
 
-		if (fluent || rigid) {
-			u::ref_ptr<Context> ic = c->mkPos(Context::Position::BODY, IPart::BASE, true);
-			ic = ic->mkTime(config()->ts(Configuration::TS::ZERO));
+// 		if (fluent || rigid) {
+// 			u::ref_ptr<Context> ic = c->mkPos(Context::Position::BODY, IPart::BASE, true);
+// 			ic = ic->mkTime(config()->ts(Configuration::TS::ZERO));
 
-			tmpout << "false <- ";
-			ret = translate_eq(sym, "VAR", ic, tmpout, args) && ret;
-//			tmpout << " & not constant_object(";
-//			translate(sym, c, tmpout, false);
-//			HANDLE_SORT_ARGS_6(sym, c, tmpout, true, false, args);
-//			tmpout << ", VAR)";
-			tmpout << " & not ";
-			translate(sym->sort(), tmpout);
-			tmpout << "(VAR)";
-			HANDLE_CLAUSES_6(tmpout, false, true, false, " & ", true);
-			if (ret) {
-				nextStmt(c, tmpout.str(), IPart::BASE);
-			}
-			tmpout.str("");
-		}
+// 			tmpout << "false <- ";
+// 			ret = translate_eq(sym, "VAR", ic, tmpout, args) && ret;
+// //			tmpout << " & not constant_object(";
+// //			translate(sym, c, tmpout, false);
+// //			HANDLE_SORT_ARGS_6(sym, c, tmpout, true, false, args);
+// //			tmpout << ", VAR)";
+// 			tmpout << " & not ";
+// 			translate(sym->sort(), tmpout);
+// 			tmpout << "(VAR)";
+// 			HANDLE_CLAUSES_6(tmpout, false, true, false, " & ", true);
+// 			if (ret) {
+// 				nextStmt(c, tmpout.str(), IPart::BASE);
+// 			}
+// 			tmpout.str("");
+// 		}
 
-		if (fluent || action) {
-			u::ref_ptr<Context> ic = c->mkPos(Context::Position::BODY, IPart::BASE, true);
-			ic = ic->mkTime(config()->ts(fluent ? Configuration::TS::STATIC : Configuration::TS::ACTION));
+// 		if (fluent || action) {
+// 			u::ref_ptr<Context> ic = c->mkPos(Context::Position::BODY, IPart::BASE, true);
+// 			ic = ic->mkTime(config()->ts(fluent ? Configuration::TS::STATIC : Configuration::TS::ACTION));
 
 
-			tmpout << "false <- ";
-			ret = translate_eq(sym, "VAR", ic, tmpout, args) && ret;
-//			tmpout << " & not constant_object(";
-//			translate(sym, c, tmpout, true, args);
-//			tmpout << ", VAR)";
-			tmpout << " &  not ";
-			translate(sym->sort(), tmpout);
-			tmpout << "(VAR)";
+// 			tmpout << "false <- ";
+// 			ret = translate_eq(sym, "VAR", ic, tmpout, args) && ret;
+// //			tmpout << " & not constant_object(";
+// //			translate(sym, c, tmpout, true, args);
+// //			tmpout << ", VAR)";
+// 			tmpout << " &  not ";
+// 			translate(sym->sort(), tmpout);
+// 			tmpout << "(VAR)";
 
-			HANDLE_CLAUSES_6(tmpout, false, true, false, " & ", true);
-			if (ret) {
-				nextStmt(c, tmpout.str(), IPart::CUMULATIVE);
-			}
-			tmpout.str("");
-		}
-	}
+// 			HANDLE_CLAUSES_6(tmpout, false, true, false, " & ", true);
+// 			if (ret) {
+// 				nextStmt(c, tmpout.str(), IPart::CUMULATIVE);
+// 			}
+// 			tmpout.str("");
+// 		}
+// 	}
 
 
 	return ret;
@@ -1955,114 +2064,114 @@ bool Translator::translateRangeDeclaration(sy::NumberRangeSymbol const* range, s
 
 bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c) {
 		bool changed = false;
-		SortData* md = sort->metadata<SortData>();
-		std::stringstream tmpout;
+// 		SortData* md = sort->metadata<SortData>();
+// 		std::stringstream tmpout;
 
-		translate(sort, tmpout);
-		std::string sortname = tmpout.str();
-		tmpout.str("");
+// 		translate(sort, tmpout);
+// 		std::string sortname = tmpout.str();
+// 		tmpout.str("");
 
 
-		if (!md->translated()) {
-//			tmpout << "sort(";
-//			translate(sort, tmpout);
-//			tmpout << ").";
-//			nextStmt(c, tmpout.str(), IPart::BASE);
-//			tmpout.str("");
+// 		if (!md->translated()) {
+// //			tmpout << "sort(";
+// //			translate(sort, tmpout);
+// //			tmpout << ").";
+// //			nextStmt(c, tmpout.str(), IPart::BASE);
+// //			tmpout.str("");
 
-//			tmpout << "sort_element(" << sortname << ", VAR) <- " << sortname << "(VAR).";
-//			nextStmt(c, tmpout.str(), IPart::BASE);
-//			tmpout.str("");
+// //			tmpout << "sort_element(" << sortname << ", VAR) <- " << sortname << "(VAR).";
+// //			nextStmt(c, tmpout.str(), IPart::BASE);
+// //			tmpout.str("");
 
-			changed = true;
-			md->translated(true);
+// 			changed = true;
+// 			md->translated(true);
 
-			// translate objects (if it has any at the moment...)
-			u::ref_ptr<ClauseList> extraClauses = new ClauseList();
-			u::ref_ptr<Context> sc = c->mkBinds(extraClauses, NULL);
-			BOOST_FOREACH(sy::ObjectSymbol const* obj, *sort) {
-				translateObjectDeclaration(obj, sort, c);
+// 			// translate objects (if it has any at the moment...)
+// 			u::ref_ptr<ClauseList> extraClauses = new ClauseList();
+// 			u::ref_ptr<Context> sc = c->mkBinds(extraClauses, NULL);
+// 			BOOST_FOREACH(sy::ObjectSymbol const* obj, *sort) {
+// 				translateObjectDeclaration(obj, sort, c);
 
-			}
+// 			}
 	
-			for (sy::SortSymbol::RangeList::const_iterator it = sort->beginRanges(); 
-					it != sort->endRanges(); it++) {
-				translateRangeDeclaration((sy::NumberRangeSymbol const*)it->get(), sort, c);
+// 			for (sy::SortSymbol::RangeList::const_iterator it = sort->beginRanges(); 
+// 					it != sort->endRanges(); it++) {
+// 				translateRangeDeclaration((sy::NumberRangeSymbol const*)it->get(), sort, c);
 
-			}
+// 			}
 
 
 
-			// sort_object(<sort>, <object>)
-//			tmpout << "sort_object(";
-//			translate(sort, tmpout);
-//			tmpout << ", VAR) <- ";
-//			translate(sort, tmpout);
-//			tmpout << "(VAR).";
-//			nextStmt(c, tmpout.str(), IPart::BASE);
-//			tmpout.str("");
+// 			// sort_object(<sort>, <object>)
+// //			tmpout << "sort_object(";
+// //			translate(sort, tmpout);
+// //			tmpout << ", VAR) <- ";
+// //			translate(sort, tmpout);
+// //			tmpout << "(VAR).";
+// //			nextStmt(c, tmpout.str(), IPart::BASE);
+// //			tmpout.str("");
 	
-			// Hide the extent of this sort...
-			tmpout << "#hide " << sortname << "/1.";
-			nextStmt(c, tmpout.str(), IPart::BASE);
-			tmpout.str("");
+// 			// Hide the extent of this sort...
+// 			// tmpout << "#hide " << sortname << "/1.";
+// 			nextStmt(c, tmpout.str(), IPart::BASE);
+// 			tmpout.str("");
 
 
-			// special case for afValue translation... should be -maxAdditive..maxAdditive
+// 			// special case for afValue translation... should be -maxAdditive..maxAdditive
 
-			if (sort == symtab()->bsort(sy::SymbolTable::BuiltinSort::ADDITIVE)) {
-				tmpout << sortname << "(-maxAdditive..maxAdditive).";
-				nextStmt(c, tmpout.str(), IPart::BASE);
-				tmpout.str("");
+// 			if (sort == symtab()->bsort(sy::SymbolTable::BuiltinSort::ADDITIVE)) {
+// 				tmpout << sortname << "(-maxAdditive..maxAdditive).";
+// 				nextStmt(c, tmpout.str(), IPart::BASE);
+// 				tmpout.str("");
 				
-//				tmpout << "sort_object(" << sortname << ", -maxAdditive..maxAdditive).";
-//				nextStmt(c, tmpout.str(), IPart::BASE);
-//				tmpout.str("");
-			}
+// //				tmpout << "sort_object(" << sortname << ", -maxAdditive..maxAdditive).";
+// //				nextStmt(c, tmpout.str(), IPart::BASE);
+// //				tmpout.str("");
+// 			}
 
 
-		}
+// 		}
 
 
-		// supersort relationships
-		for (sy::SortSymbol::SortList::const_iterator it = sort->beginSuperSorts(); it != sort->endSuperSorts(); it++) {
+// 		// supersort relationships
+// 		for (sy::SortSymbol::SortList::const_iterator it = sort->beginSuperSorts(); it != sort->endSuperSorts(); it++) {
 
-			if (!md->translatedSubSort(*it)) {
+// 			if (!md->translatedSubSort(*it)) {
 		
-				translate(*it, tmpout);
-				tmpout << "(VAR) <- " << sortname << "(VAR).";
-				nextStmt(c, tmpout.str(), IPart::BASE);
-				tmpout.str("");
+// 				translate(*it, tmpout);
+// 				tmpout << "(VAR) <- " << sortname << "(VAR).";
+// 				nextStmt(c, tmpout.str(), IPart::BASE);
+// 				tmpout.str("");
 
-				md->addTranslatedSubSort(*it);
+// 				md->addTranslatedSubSort(*it);
 				
-				changed = true;
+// 				changed = true;
 
-				// recurse to ensure the other sort is completely declared
-				translateSortDeclaration(*it, c);
+// 				// recurse to ensure the other sort is completely declared
+// 				translateSortDeclaration(*it, c);
 
-			}
-		}
+// 			}
+// 		}
 
-		// subsort relationships
-		for (sy::SortSymbol::SortList::const_iterator it = sort->beginSubSorts(); it != sort->endSubSorts(); it++) {
+// 		// subsort relationships
+// 		for (sy::SortSymbol::SortList::const_iterator it = sort->beginSubSorts(); it != sort->endSubSorts(); it++) {
 
-			if (!md->translatedSuperSort(*it)) {
+// 			if (!md->translatedSuperSort(*it)) {
 
-				tmpout << sortname << "(VAR) <- ";
-				translate(*it, tmpout);
-				tmpout << "(VAR).";
-				nextStmt(c, tmpout.str(), IPart::BASE);
-				tmpout.str("");
+// 				tmpout << sortname << "(VAR) <- ";
+// 				translate(*it, tmpout);
+// 				tmpout << "(VAR).";
+// 				nextStmt(c, tmpout.str(), IPart::BASE);
+// 				tmpout.str("");
 
-				md->addTranslatedSuperSort(*it);
+// 				md->addTranslatedSuperSort(*it);
 				
-				changed = true;
+// 				changed = true;
 
-				// recurse to ensure the other sort is completely declared
-				translateSortDeclaration(*it, c);
-			}
-		}
+// 				// recurse to ensure the other sort is completely declared
+// 				translateSortDeclaration(*it, c);
+// 			}
+// 		}
 
 
 
@@ -2075,35 +2184,27 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 
 bool Translator::translate(sy::SortSymbol const* sort, std::ostream& out) {
 
-	out << "s_" << *sort->base();
+	out << *sort->base();
 	return true;
 }
 
 bool Translator::translate(sy::VariableSymbol const* var, std::ostream& out) {
 
-	out << "V_" << *var->base();
+	out << *var->base();
 	return true;
 }
 
 bool Translator::translate(sy::ConstantSymbol const* sym, Context* c, std::ostream& out, bool args, ClauseList const* setArgs) {
 
-	if (sym->constType() & sy::ConstantSymbol::Type::M_EXTERNAL) out << "e_";
-	else out << "c_";
-
-	if (sym->constType() == sy::ConstantSymbol::Type::RIGID) out << "r_";
-	else if (sym->constType() & sy::ConstantSymbol::Type::M_ACTIONS) out << "a_";
-	else out << "f_";
-	out << sym->arity() << "_" << *sym->base();
+	out << *sym->base();
 	if (args) {
-		HANDLE_SORT_ARGS_6(sym, c, out, true, false, setArgs);
+		HANDLE_CONST_ARGS_6(sym, c, out, true, false, setArgs);
 	}
 	return true;
 }
 
 bool Translator::translate(sy::ObjectSymbol const* sym, Context* c, std::ostream& out, bool args) {
 
-	DomainType::type dt = sym->domainType();
-	if (dt != DomainType::INTEGRAL) out << "o_";
 	out << *sym->base();
 	if (args) {
 		HANDLE_SORT_ARGS(sym, c, out, true, false);
@@ -2719,11 +2820,12 @@ bool Translator::translate_eq(el::Constant const* constant, std::string const& v
 	translate(constant->symbol(), c, out, false);
 	out << "(";
 	HANDLE_ARGS(constant, c, out, false, true);
-	out << value;
 	if (constant->symbol()->constType() != sy::ConstantSymbol::Type::RIGID) {
-		out << ", " << *(c->ts());
+		// out << ", " << *(c->ts());
+		out << *(c->ts());
 	} // else out << ")";
-	out << ")";
+	out << ")=";
+	out << value;
 //	if (c->pos() != Context::Position::AGGR) out << "}";
 
 	return true;
@@ -2758,11 +2860,12 @@ bool Translator::translate_eq(sy::ConstantSymbol const* constant, std::string co
 	translate(constant, c, out, false);
 	out << "(";
 	HANDLE_SORT_ARGS_6(constant, c, out, false, true, setArgs);
-	out << value;
 	if (constant->constType() != sy::ConstantSymbol::Type::RIGID) {
-		out << ", " << *(c->ts());
+		// out << ", " << *(c->ts());
+		out << *(c->ts());
 	} // else out << ")";
-	out << ")";
+	out << ")=";
+	out << value;
 //	if (c->pos() != Context::Position::AGGR) out << "}";
 
 	return true;
@@ -2813,7 +2916,7 @@ ReferencedString const* Translator::newVar(sy::SortSymbol const* sort, Context* 
 
 	if (!ret) {
 		std::stringstream tmp;
-		tmp << (global ? "G" : "L") << "VAR_" << *sort->base() << "_" << l.size()+1;
+		tmp << (global ? "G" : "L") << "VAR_" << *sort->base();
 
 		// create a new variable and register it
 		ret = new ReferencedString(tmp.str());
@@ -2821,13 +2924,13 @@ ReferencedString const* Translator::newVar(sy::SortSymbol const* sort, Context* 
 		tmp.str("");
 
 		// domain the variable if it's global
-		if (global) {
-			tmp << "#domain ";
-			translate(sort, tmp);
-			tmp << "(" << *ret << ").";
-			c->addPreStmt(tmp.str(), IPart::NONE);
+		// if (global) {
+		// 	tmp << "#domain ";
+		// 	translate(sort, tmp);
+		// 	tmp << "(" << *ret << ").";
+		// 	c->addPreStmt(tmp.str(), IPart::NONE);
 
-		}
+		// }
 	}
 
 	return ret.release();
@@ -2844,27 +2947,27 @@ void Translator::assertIPart(IPart::type ipart, std::string const* step) {
 	if ((oldstephash == (size_t)step) && (_ipart == ipart || ipart == IPart::NONE)) return;
 	oldstephash = (size_t)step;
 
-	switch (ipart) {
-	case IPart::BASE:
-		config()->out() << "#base." << std::endl;
-		break;
+	// switch (ipart) {
+	// case IPart::BASE:
+	// 	config()->out() << "#base." << std::endl;
+	// 	break;
 
-	case IPart::CUMULATIVE:
-		config()->out() << "#cumulative " << (step ? *step : *config()->ts(Configuration::TS::STATIC)) << "." << std::endl;
-		break;
+	// case IPart::CUMULATIVE:
+	// 	config()->out() << "#cumulative " << (step ? *step : *config()->ts(Configuration::TS::STATIC)) << "." << std::endl;
+	// 	break;
 
-	case IPart::VOLATILE:
-		config()->out() << "#volatile " << (step ? *step : *config()->ts(Configuration::TS::STATIC)) << "." << std::endl;
-		break;
+	// case IPart::VOLATILE:
+	// 	config()->out() << "#volatile " << (step ? *step : *config()->ts(Configuration::TS::STATIC)) << "." << std::endl;
+	// 	break;
 
-	case IPart::EXTERNAL:
-		config()->out() << "#external " << (step ? *step : *config()->ts(Configuration::TS::ZERO)) << "." << std::endl;
-		break;	
+	// case IPart::EXTERNAL:
+	// 	config()->out() << "#external " << (step ? *step : *config()->ts(Configuration::TS::ZERO)) << "." << std::endl;
+	// 	break;	
 
 
-	default:
-		break;
-	}
+	// default:
+	// 	break;
+	// }
 
 	_ipart = ipart;
 

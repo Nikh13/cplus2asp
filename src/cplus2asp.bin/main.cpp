@@ -96,6 +96,7 @@ int main(int argc, char const** argv) {
 	conf->ostream(Verb::OP) << "Parsing..." << std::endl;
 	bcplus::parser::BCParser::ParseType result;
 	bool ret = true;
+	bool initialDone = false;
 	do {
 		result = p->parse();
 
@@ -106,6 +107,10 @@ int main(int argc, char const** argv) {
 		if (result.second) {
 
 			bcplus::statements::Statement* stmt = result.second;
+			// if(!initialDone){
+			// 	ret = t->initialDeclarations(stmt) && ret;
+			// 	initialDone = true;
+			// }
 			ret = t->translate(stmt) && ret;
 
 		}
