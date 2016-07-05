@@ -51,7 +51,7 @@ private:
 
 	/// A list to add prereq statements to (or NULL if they should be ignored)
 	babb::utils::ref_ptr<StatementList> _preStmts;
-	
+
 	/// A list of newly created free variables that should be quantified over
 	babb::utils::ref_ptr<ClauseList> _existsVars;
 
@@ -66,7 +66,7 @@ private:
 
 public:
 
-	
+
 	/*********************************************************************************/
 	/* Constructors / Destructors */
 	/*********************************************************************************/
@@ -110,7 +110,7 @@ public:
 
 	/// Add variable substitutations to the substitution list.
 	Context* mkVarSubstitutions(VariableSubstitutionList const& subs);
-	
+
 
 
 	/*********************************************************************************/
@@ -131,7 +131,7 @@ public:
 
 	/// Append a clause to the list
 	inline void addClause(std::string const& clause)			{ if (_extraClauses) _extraClauses->push_back(clause); }
-	
+
 	/// Append a variable to the list of existentially quantified variables
 	inline void addExists(std::string const& var)				{ if (_existsVars) _existsVars->push_back(var); }
 
@@ -142,7 +142,7 @@ public:
 
 	/// Get the string which should substitute the provided variable, or NULL if no such string has been defined
 	inline ReferencedString const* getVarSubstitution(bcplus::symbols::VariableSymbol const* var) const
-																{ VariableSubstitutionList::const_iterator it = _subs.find(var); 
+																{ VariableSubstitutionList::const_iterator it = _subs.find(var);
 																  return (it != _subs.end() ? (it->second) : NULL); }
 	/// Get the active ipart for the translation
 	IPart::type ipart() const									{ return _ipart; }

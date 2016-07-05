@@ -55,7 +55,7 @@ private:
 		int _laststmt;
 	public:
 		/// Basic constructor
-		varinfo_t(ReferencedString const* name, int stmt = 0) 
+		varinfo_t(ReferencedString const* name, int stmt = 0)
 			: _name(name), _laststmt(stmt) { }
 
 		/// Mark that this variable was used this statement
@@ -93,7 +93,7 @@ private:
 
 	/// incremented for each new statement.
 	int _stmtcount;
-	
+
 	/// Whether we should output concurrency prohibiting enforcing rules for boolean actions
 	bool _noconcurrency;
 
@@ -140,8 +140,8 @@ public:
 	/// @return true if successful, false otherwise
 	bool translate(bcplus::statements::Statement const* stmt);
 
-	bool initialDeclarations(bcplus::statements::Statement const* stmt);
-		
+	bool initialDeclarations();
+
 
 private:
 	/// Call to translate a normal formed causal law
@@ -161,11 +161,11 @@ private:
 	bool translate(bcplus::elements::AtomicFormula const* af, Context* c, std::ostream& out, bool negate = false);
 
 	bool translate(bcplus::elements::Term const* t, Context* c, std::ostream& out);
-	
+
 	/// Translate equality into an atomic formula
 	bool translate_eq(bcplus::elements::Constant const* constant, std::string const& value, Context* c, std::ostream& out);
 	bool translate_eq(bcplus::symbols::ConstantSymbol const* constant, std::string const& value, Context* c, std::ostream& out, ClauseList const* setArgs = NULL);
-	
+
 	/// Translate contribution atom
 	bool translate_contrib(bcplus::elements::AtomicFormula const* body, bcplus::elements::Constant const* head, bcplus::elements::Term const* value, bool positive, Context* c, std::ostream& out);
 
@@ -193,16 +193,16 @@ private:
 	/// Helper function for translating a subformula and capturing generated clauses
 	bool bindAndTranslate(bcplus::elements::Formula const* f, Context* c, std::ostream& out, bool parens = true);
 
-	
+
 	/// add a translation of the provided object-sort binding as a prereq statement to the provided context
-	bool translateObjectDeclaration(bcplus::symbols::ObjectSymbol const* obj, bcplus::symbols::SortSymbol const* sort, Context* c);
+	bool translateObjectDeclaration(bcplus::symbols::ObjectSymbol const* obj, bcplus::symbols::SortSymbol const* sort, Context* c, bool last);
 
 	/// add a translation of the provided range-sort binding as a prereq statement to the provided context
-	bool translateRangeDeclaration(bcplus::symbols::NumberRangeSymbol const* range, bcplus::symbols::SortSymbol const* sort, Context* c);
+	bool translateRangeDeclaration(bcplus::symbols::NumberRangeSymbol const* range, bcplus::symbols::SortSymbol const* sort, Context* c, bool last);
 
 	/// add a translation of a sort declaration as a prereq statement to the provided context
 	bool translateSortDeclaration(bcplus::symbols::SortSymbol const* sort, Context* c);
-	
+
 	/// add a translation of a constant declaration as a prereq statement to the provided context
 	bool translateConstDeclaration(bcplus::symbols::ConstantSymbol const* constant, Context* c);
 };

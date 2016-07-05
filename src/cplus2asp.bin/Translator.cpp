@@ -84,7 +84,6 @@ bool sortDone = false;
 
 #define HANDLE_CONST_ARGS_6(id, context, out, parens, comma, setArgs)\
 	{																\
-			if (id->arity()) {										\
 				if (parens) out << "(";								\
 				std::stringstream tmp;								\
 				bool first = true;									\
@@ -98,13 +97,14 @@ bool sortDone = false;
 						out << *it++;								\
 					} else {										\
 																	\
-						out << *sort->base();				\
+						out << *sort->base()<< ",";				\
 																	\
 					}												\
 				}													\
+				if(sym->constType() & sy::ConstantSymbol::Type::M_ACTIONS) out << "astep";				\
+				if(sym->constType() & sy::ConstantSymbol::Type::M_FLUENTS) out << "step";				\
 				if (parens) out << ")";								\
 				if (comma) out << ", ";								\
-			}														\
 	}
 
 #define HANDLE_PRESTMTS 											\
@@ -157,7 +157,7 @@ void Translator::SymbolMetadataInitializer::initMetadata(sy::Symbol* sym) const 
 		case sy::Symbol::Type::OBJECT:
 			sym->metadata(new ObjectData((sy::ObjectSymbol*)sym));
 			break;
-		
+
 		case sy::Symbol::Type::RANGE:
 			sym->metadata(new RangeData((sy::NumberRangeSymbol*)sym));
 			break;
@@ -209,7 +209,7 @@ void Translator::prologue() {
 	config()->out() 	<< "constant(VAR) <- fluent(VAR)."													<< std::endl
 						<< "constant(VAR) <- action(VAR)."													<< std::endl
 						<< "constant(VAR) <- static(VAR)."													<< std::endl
-	
+
 						<< "fluent(VAR) <- simpleFluent(VAR)."												<< std::endl
 						<< "fluent(VAR) <- inertialFluent(VAR)."											<< std::endl
 						<< "fluent(VAR) <- sdFluent(VAR)."													<< std::endl
@@ -254,15 +254,15 @@ void Translator::epilogue() {
 						<< "% noconcurrency -----------------------------------------------------------" << std::endl
 						<< "% -------------------------------------------------------------------------" << std::endl
 						<< std::endl;
-		
+
 		std::stringstream tmpout;
 		u::ref_ptr<StatementList> preStmts = new StatementList();
-		u::ref_ptr<ClauseList> extraClauses = new ClauseList(); 
-		u::ref_ptr<Context> c = new Context(config(), Context::Position::BODY, IPart::CUMULATIVE, preStmts, extraClauses, 
+		u::ref_ptr<ClauseList> extraClauses = new ClauseList();
+		u::ref_ptr<Context> c = new Context(config(), Context::Position::BODY, IPart::CUMULATIVE, preStmts, extraClauses,
 			NULL, true, config()->ts(Configuration::TS::ACTION));
 
-		u::ref_ptr<ClauseList> args1 = new ClauseList(); 
-		u::ref_ptr<ClauseList> args2 = new ClauseList(); 
+		u::ref_ptr<ClauseList> args1 = new ClauseList();
+		u::ref_ptr<ClauseList> args2 = new ClauseList();
 
 		std::string val, val2;
 
@@ -272,10 +272,10 @@ void Translator::epilogue() {
 			u::ref_ptr<const sy::ConstantSymbol> c1 = (sy::ConstantSymbol const*)(it->get());
 
 			if (!(c1->constType() & sy::ConstantSymbol::Type::M_REGULAR_ACTIONS)) continue;
-	
 
 
-			
+
+
 
 
 			if (c1->sort()->domainType() == bcplus::DomainType::BOOLEAN) val = "o_true";
@@ -288,9 +288,9 @@ void Translator::epilogue() {
 				bool snc_2 = false;
 				u::ref_ptr<const sy::ConstantSymbol> c2 = (sy::ConstantSymbol const*)(it2->get());
 
-				if (!(c2->constType() & sy::ConstantSymbol::Type::M_REGULAR_ACTIONS)) continue; 
+				if (!(c2->constType() & sy::ConstantSymbol::Type::M_REGULAR_ACTIONS)) continue;
 				if (c1 == c2 && !c1->arity()) continue;
-			
+
 				// setup controlled arguments for the first constant
 				args1->clear();
 				for (sy::ConstantSymbol::const_iterator cit = c1->begin(); cit != c1->end(); cit++) {
@@ -329,7 +329,7 @@ void Translator::epilogue() {
 				}
 
 
-				HANDLE_CLAUSES_6(tmpout, true, true, true, " & ", true);							
+				HANDLE_CLAUSES_6(tmpout, true, true, true, " & ", true);
 				HANDLE_PRESTMTS;
 				assertIPart(IPart::CUMULATIVE);
 				config()->out() << tmpout.str();
@@ -357,18 +357,18 @@ void Translator::epilogue() {
 
 
 
-	if (config()->inputLanguage() != Configuration::Input::MVPF) {
-		out << "query_label(query)."							<< std::endl;
-	}
+	// if (config()->inputLanguage() != Configuration::Input::MVPF) {
+	// 	out << "query_label(query)."							<< std::endl;
+	// }
 
 
-	if (config()->outputLanguage() != Configuration::Output::STATIC) {
-		assertIPart(IPart::VOLATILE);
-		out << "false <- " << *config()->ts(Configuration::TS::STATIC) <<" < minstep.";
-	}
+	// if (config()->outputLanguage() != Configuration::Output::STATIC) {
+	// 	assertIPart(IPart::VOLATILE);
+	// 	out << "<- " << *config()->ts(Configuration::TS::STATIC) <<" < minstep.";
+	// }
 
 
-	out 																									<< std::endl 
+	out 																									<< std::endl
 					<< "% -------------------------------------------------------------------------" 		<< std::endl
 																											<< std::endl;
 
@@ -380,78 +380,48 @@ void Translator::epilogue() {
 	}
 
 		if (cmask & syct::M_ADDITIVE)				out << "#hide additiveconst_action/1."					<< std::endl;
-	
 
 
-	if (_computed)									out << "#hide s_computed/1."								<< std::endl;
 
-	if (config()->inputLanguage() != Configuration::Input::MVPF) {
-		out << "#hide query_label/1."		<< std::endl;
-	}
+	// if (_computed)									out << "#hide s_computed/1."								<< std::endl;
+
+	// if (config()->inputLanguage() != Configuration::Input::MVPF) {
+	// 	out << "#hide query_label/1."		<< std::endl;
+	// }
 
 
 }
 
 
-bool Translator::initialDeclarations(bcplus::statements::Statement const* stmt) {
+bool Translator::initialDeclarations() {
 
-	// bool ret = true;
-	// std::stringstream tmpout;
-	// u::ref_ptr<StatementList> preStmts = new StatementList();
-	// u::ref_ptr<ClauseList> extraClauses = new ClauseList(); 
-	// u::ref_ptr<Context> context = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses, NULL, false);
-	
 	config()->out() << std::endl
-							<< "% Sort Declarations ---------------------------------------------------" << std::endl
-							<< ":- sorts"<< std::endl
-							<< "step;astep.";
+					<< "% Sort Declarations ---------------------------------------------------" << std::endl
+					<< ":- sorts"<< std::endl
+					<< "step;astep";
 
-	// u::ref_ptr<const st::SortDeclaration> decls = (st::SortDeclaration const*) stmt;
-	// u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+	config()->out() << "." <<std::endl
+					<< "% ---------------------------------------------------------------------" << std::endl
+					<< std::endl;
 
-	// if(decls != NULL){
-	// 	BOOST_FOREACH(sy::SortSymbol const* sort, *decls) {
-	// 		config()->out() << ";"<< *sort->base();
-	// 		//translateSortDeclaration(sort, c);
-	// 	}
-	// }
-	// HANDLE_PRESTMTS;	
-	
-	// config()->out() << "." <<std::endl 
-	// 				<< "% ---------------------------------------------------------------------" << std::endl 
-	// 				<< std::endl;
+	config()->out() << std::endl
+					<< "% Variable Declarations -----------------------------------------------" << std::endl
+					<< ":- variables"<< std::endl
+					<< "ST::step";
 
-	// config()->out() << std::endl 
-	// 				<< "% Variable Declarations -----------------------------------------------" << std::endl
-	// 				<< ":- variables"<< std::endl
-	// 				<< "ST::step";
+	config()->out() << "." <<std::endl
+					<< "% ---------------------------------------------------------------------" << std::endl
+					<< std::endl;
 
-	// u::ref_ptr<const st::VariableDeclaration> declv = (st::VariableDeclaration const*) stmt;
+	config()->out() << std::endl
+					<< "% Object Declarations -----------------------------------------------" << std::endl
+					<< ":- objects"<< std::endl
+					<< "1..maxstep :: step;"<< std::endl
+					<< "0..maxstep-1 :: astep";
 
-	// if(declv!=NULL){
-	// 	BOOST_FOREACH(sy::VariableSymbol const* var, *declv) {
-	// 		// sy::SortSymbol const* sort = var->sort();
-	// 		// config()->out() << ";"<< std::endl;
-	// 		// config()->out()	<<*var->base();
-	// 		// config()->out()	<<"::"<<*sort->base();
-
-	// 		// assertIPart(IPart::BASE);
-	// 		// // handle dynamic sort declarations
-	// 		// translateSortDeclaration(var->sort(), c);
-	// 		// HANDLE_PRESTMTS;
-
-	// 		// config()->out() << "#domain ";
-	// 		// translate(var->sort(), config()->out());
-	// 		// config()->out() << "(";
-	// 		// translate(var, config()->out());
-	// 		// config()->out() << ")." << std::endl;
-
-	// 	}
-	// }
-	
-	// config()->out() << "." <<std::endl 
-	// 				<< "% ---------------------------------------------------------------------" << std::endl 
-	// 				<< std::endl;
+	config()->out() << "." <<std::endl
+					<< "% ---------------------------------------------------------------------" << std::endl
+					<< std::endl;
 }
 
 
@@ -466,7 +436,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 	bool ret = true;
 	std::stringstream tmpout;
 	u::ref_ptr<StatementList> preStmts = new StatementList();
-	u::ref_ptr<ClauseList> extraClauses = new ClauseList(); 
+	u::ref_ptr<ClauseList> extraClauses = new ClauseList();
 	u::ref_ptr<Context> context = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses, NULL, false);
 
 
@@ -480,12 +450,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
      case st::Statement::Type::CONSTANTS:
 		{
-			if(!sortDone){
-				initialDeclarations(stmt);
-				sortDone = true;
-			}
-
-			config()->out() << std::endl 
+			config()->out() << std::endl
 							<< "% Constant Declarations -----------------------------------------------" << std::endl
 							<< std::endl;
 
@@ -493,7 +458,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 			u::ref_ptr<const st::ConstantDeclaration> decl = (st::ConstantDeclaration const*) stmt;
 			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
 
-			config()->out() << std::endl 
+			config()->out() << std::endl
 					<< ":- constants";
 
 			BOOST_FOREACH(sy::ConstantSymbol const* sym, *decl) {
@@ -505,8 +470,8 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 				config()->out() << ";";
 			}
 
-			config()->out() << "\b." <<std::endl 
-					<< "% ---------------------------------------------------------------------" << std::endl 
+			config()->out() << "\b." <<std::endl
+					<< "% ---------------------------------------------------------------------" << std::endl
 					<< std::endl;
 
 
@@ -515,9 +480,9 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 			}
 			HANDLE_PRESTMTS;
-		
-			config()->out() << std::endl 
-							<< "% ---------------------------------------------------------------------" << std::endl 
+
+			config()->out() << std::endl
+							<< "% ---------------------------------------------------------------------" << std::endl
 							<< std::endl;
 		}
 		break;
@@ -534,25 +499,29 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 			u::ref_ptr<const st::ObjectDeclaration> decl = (st::ObjectDeclaration const*) stmt;
 			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
 
+			config()->out() << std::endl
+					<< ":- objects"<<std::endl;
+
 
 			BOOST_FOREACH(st::ObjectDeclaration::Element const* bind, *decl) {
 
-				// handle dynamic sort declarations
-				translateSortDeclaration(bind->sort(), c);
-
+				// // handle dynamic sort declarations
+				// translateSortDeclaration(bind->sort(), c);
+				int i = 0;
 				BOOST_FOREACH(sy::Symbol const* sym, *bind) {
-
+					i++;
+					int size = bind->size();
 					switch(sym->type()) {
 					case sy::Symbol::Type::OBJECT:
 						// handle dynamic sort declarations
-						BOOST_FOREACH(sy::SortSymbol const* sort, *(sy::ObjectSymbol const*)sym) {
-							translateSortDeclaration(sort, c);
-						}
+						// BOOST_FOREACH(sy::SortSymbol const* sort, *(sy::ObjectSymbol const*)sym) {
+						// 	translateSortDeclaration(sort, c);
+						// }
 
-						ret = translateObjectDeclaration((sy::ObjectSymbol const*)sym, bind->sort(), c) && ret;	
+						ret = translateObjectDeclaration((sy::ObjectSymbol const*)sym, bind->sort(), c,i==size) && ret;
 						break;
 					case sy::Symbol::Type::RANGE:
-						ret = translateRangeDeclaration((sy::NumberRangeSymbol const*)sym, bind->sort(), c) && ret;	
+						ret = translateRangeDeclaration((sy::NumberRangeSymbol const*)sym, bind->sort(), c,i==size) && ret;
 						break;
 					default:
 						// not used
@@ -566,11 +535,11 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 			HANDLE_PRESTMTS;
 
 
-			config()->out() << std::endl 
-							<< "% ---------------------------------------------------------------------" << std::endl 
+			config()->out() <<std::endl
+							<< "% ---------------------------------------------------------------------" << std::endl
 							<< std::endl;
 		}
-			
+
 
 
 		break;
@@ -579,56 +548,53 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
      case st::Statement::Type::SORTS:
 		{
-			// config()->out() << std::endl
-			// 				<< "% Sort Declarations ---------------------------------------------------" << std::endl
-			// 				<< ":- sorts"<< std::endl
-			// 				<< "step;astep";
 
-			// u::ref_ptr<const st::SortDeclaration> decl = (st::SortDeclaration const*) stmt;
-			// u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+			config()->out() << std::endl
+							<< "% Sort Declarations -------------------------------------------------" << std::endl
+							<< std::endl;
 
-			// BOOST_FOREACH(sy::SortSymbol const* sort, *decl) {
-			// 	config()->out() << ";"<< *sort->base();
-			// 	//translateSortDeclaration(sort, c);
-			// }
-			// HANDLE_PRESTMTS;
-			
-			// config()->out() << "." <<std::endl 
-			// 				<< "% ---------------------------------------------------------------------" << std::endl 
-			// 				<< std::endl;
+			u::ref_ptr<const st::SortDeclaration> decl = (st::SortDeclaration const*) stmt;
+			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+
+			config()->out() << std::endl
+					<< ":- sorts";
+
+			BOOST_FOREACH(sy::SortSymbol const* sort, *decl) {
+				config()->out() << std::endl << *sort->base() << ";";
+			}
+			HANDLE_PRESTMTS;
+
+			config()->out() << "\b." <<std::endl
+							<< "% ---------------------------------------------------------------------" << std::endl
+							<< std::endl;
 
 		}
 		break;
-		
+
 		// --------------------------------------------------------------------------------------------
 
      case st::Statement::Type::VARIABLES:
 		{
-			// config()->out() << std::endl 
-			// 				<< "% Variable Declarations -----------------------------------------------" << std::endl
-			// 				<< std::endl;
 
-			// u::ref_ptr<const st::VariableDeclaration> decl = (st::VariableDeclaration const*) stmt;
-			// u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
+			config()->out() << std::endl
+							<< "% Variable Declarations -------------------------------------------------" << std::endl
+							<< std::endl;
+			u::ref_ptr<const st::VariableDeclaration> decl = (st::VariableDeclaration const*) stmt;
+			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
 
-			// BOOST_FOREACH(sy::VariableSymbol const* var, *decl) {
-			// 	assertIPart(IPart::BASE);
-			// 	// handle dynamic sort declarations
-			// 	translateSortDeclaration(var->sort(), c);
-			// 	HANDLE_PRESTMTS;
+			config()->out() << std::endl
+					<< ":- variables";
 
-			// 	config()->out() << "#domain ";
-			// 	translate(var->sort(), config()->out());
-			// 	config()->out() << "(";
-			// 	translate(var, config()->out());
-			// 	config()->out() << ")." << std::endl;
-			// }
-			
-			// config()->out() << std::endl 
-			// 				<< "% ---------------------------------------------------------------------" << std::endl 
-			// 				<< std::endl;
+			BOOST_FOREACH(sy::VariableSymbol const* var, *decl) {
+				sy::SortSymbol const* sort = var->sort();
+				config()->out()	<<std::endl << *var->base();
+				config()->out()	<<"::"<<*sort->base();
+				config()->out() << ";";
+			}
 
-
+			config()->out() << std::endl
+							<< "% ---------------------------------------------------------------------" << std::endl
+							<< std::endl;
 		}
 		break;
 
@@ -636,7 +602,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
      case st::Statement::Type::COMMENTS:
 
-		{	
+		{
 			u::ref_ptr<const st::CommentBlock> decl = (st::CommentBlock const*) stmt;
 
 			BOOST_FOREACH(parser::Token const* cmt, *decl) {
@@ -645,15 +611,15 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 		}
 		break;
-		
+
 		// --------------------------------------------------------------------------------------------
 
      case st::Statement::Type::F2LP:
-		{	
+		{
 			assertIPart(IPart::BASE);
-			config()->out() << "% --------- begin F2LP Block --------- %" << std::endl; 
+			config()->out() << "% --------- begin F2LP Block --------- %" << std::endl;
 			config()->out() << *((st::F2LPBlock const*)stmt)->value()->str() << std::endl;
-			config()->out() << "% --------- end F2LP Block --------- %" << std::endl; 
+			config()->out() << "% --------- end F2LP Block --------- %" << std::endl;
 
 		}
 		break;
@@ -661,25 +627,25 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 		// --------------------------------------------------------------------------------------------
 
      case st::Statement::Type::LUA:
-		{	
+		{
 			assertIPart(IPart::BASE);
-			config()->out() << "% --------- begin LUA Block --------- %" << std::endl; 
-			config()->out() << "#begin_lua" << std::endl; 
+			config()->out() << "% --------- begin LUA Block --------- %" << std::endl;
+			config()->out() << "#begin_lua" << std::endl;
 			config()->out() << *((st::LUABlock const*)stmt)->value()->str() << std::endl;
-			config()->out() << "#end_lua." << std::endl; 
-			config()->out() << "% --------- end LUA Block --------- %" << std::endl; 
+			config()->out() << "#end_lua." << std::endl;
+			config()->out() << "% --------- end LUA Block --------- %" << std::endl;
 
 		}
 		break;
 
      case st::Statement::Type::PYTHON:
-		{	
+		{
 			assertIPart(IPart::BASE);
-			config()->out() << "% --------- begin Python Block --------- %" << std::endl; 
-			config()->out() << "#begin_python" << std::endl; 
+			config()->out() << "% --------- begin Python Block --------- %" << std::endl;
+			config()->out() << "#begin_python" << std::endl;
 			config()->out() << *((st::LUABlock const*)stmt)->value()->str() << std::endl;
-			config()->out() << "#end_python." << std::endl; 
-			config()->out() << "% --------- end LUA Block --------- %" << std::endl; 
+			config()->out() << "#end_python." << std::endl;
+			config()->out() << "% --------- end LUA Block --------- %" << std::endl;
 
 		}
 		break;
@@ -687,17 +653,17 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 		// --------------------------------------------------------------------------------------------
 
      case st::Statement::Type::ASP:
-		{	
+		{
 			assertIPart(IPart::BASE);
-			config()->out() << "% --------- begin ASP Block --------- %" << std::endl; 
-			config()->out() << "#begin_asp" << std::endl; 
+			config()->out() << "% --------- begin ASP Block --------- %" << std::endl;
+			config()->out() << "#begin_asp" << std::endl;
 			config()->out() << *((st::ASPBlock const*)stmt)->value()->str() << std::endl;
-			config()->out() << "#end_asp." << std::endl; 
-			config()->out() << "% --------- end ASP Block --------- %" << std::endl; 
+			config()->out() << "#end_asp." << std::endl;
+			config()->out() << "% --------- end ASP Block --------- %" << std::endl;
 
 		}
 		break;
-		
+
 		// --------------------------------------------------------------------------------------------
 
 
@@ -816,12 +782,12 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 		}
 		break;
-   
+
 		// --------------------------------------------------------------------------------------------
- 
+
 	case st::Statement::Type::HIDE:
 		{
-			
+
 			HANDLE_SHOW_HIDE_STMT(st::HideStatement, "#hide ");
 		}
 		break;
@@ -878,7 +844,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 		break;
 
      case st::Statement::Type::QUERY:
-		{	
+		{
 			u::ref_ptr<const st::QueryStatement> q = (st::QueryStatement const*) stmt;
 			u::ref_ptr<Context> c = new Context(config(), Context::Position::DECL, IPart::VOLATILE, preStmts, extraClauses, NULL, true);
 			u::ref_ptr<Context> bc = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses, NULL, true);
@@ -896,7 +862,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 				// put formulas of the form 0:F in the base part
 				// TODO: Better differentiation
-				if (f->subType() == el::Formula::Type::BINDING 
+				if (f->subType() == el::Formula::Type::BINDING
 					&& ((el::BindingFormula const*)f)->step()->subType() == el::Term::Type::OBJECT
 					&& ((el::Object const*)(((el::BindingFormula const*)f)->step()))->symbol() == symtab()->resolve(sy::Symbol::Type::OBJECT, "0")) {
 					assertIPart(IPart::BASE);
@@ -909,26 +875,28 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 					if (config()->outputLanguage() != Configuration::Output::STATIC && !(f->cmask() & bcplus::symbols::ConstantSymbol::Type::M_ACTIONS)) {
 						assertIPart(IPart::BASE);
 						bindAndTranslate(f, bc, tmpout);
-					
+
 						HANDLE_PRESTMTS
 						config()->out() << "<- ";
 						config()->out() << "not " << tmpout.str();
 						HANDLE_CLAUSES(config()->out(), false, false);
-						config()->out() << " & query_label(q_" << *(q->symbol()->base()) << ") & maxstep == 0." << std::endl;
+						// config()->out() << " & query_label(q_" << *(q->symbol()->base()) << ") & maxstep == 0." << std::endl;
+						config()->out() << "."<<std::endl;
 						tmpout.str("");
 					}
-					
+
 					assertIPart(IPart::VOLATILE);
 					bindAndTranslate(f, c, tmpout);
 
 				}
-				
+
 
 				HANDLE_PRESTMTS
 				config()->out() << "<- ";
 				config()->out() << "not " << tmpout.str();
 				HANDLE_CLAUSES(config()->out(), false, false);
-				config()->out() << " & query_label(q_" << *(q->symbol()->base()) << ")." << std::endl;
+				config()->out() << "."<<std::endl;
+				// config()->out() << " & query_label(q_" << *(q->symbol()->base()) << ")." << std::endl;
 				tmpout.str("");
 			}
 		}
@@ -988,7 +956,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 				else if (!l->ifbody()) newafter = l->body();
 				else {
 					newafter = new el::BinaryFormula(el::BinaryFormula::Operator::AND, l->body(), l->ifbody());
-				}			
+				}
 
 				ret = translateCausalLaw(l->head(), NULL, NULL, newafter, l->unless(), l->where(), preStmts, extraClauses, tmpout);
 			}
@@ -1025,7 +993,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 				else if (!l->ifbody()) newafter = l->body();
 				else {
 					newafter = new el::BinaryFormula(el::BinaryFormula::Operator::AND, l->body(), l->ifbody());
-				}			
+				}
 				ret = translateCausalLaw(l->head(), NULL, l->head(), newafter, l->unless(), l->where(), preStmts, extraClauses, tmpout);
 			}
 		}
@@ -1088,7 +1056,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 			if (!l->ifcons()) newifcons = l->head();
 			else newifcons = new el::BinaryFormula(el::BinaryFormula::Operator::AND, l->ifcons(), l->head());
-			
+
 			ret = translateCausalLaw(l->head(), l->ifbody(), newifcons, l->after(), l->unless(), l->where(), preStmts, extraClauses, tmpout);
 		}
 		break;
@@ -1124,7 +1092,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 			if (!l->ifcons()) newifcons = newhead;
 			else newifcons = new el::BinaryFormula(el::BinaryFormula::Operator::AND, l->ifcons(), newhead);
-			
+
 			if (!l->after()) newafter = newhead;
 			else newafter = new el::BinaryFormula(el::BinaryFormula::Operator::AND, l->after(), newhead);
 
@@ -1134,7 +1102,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 		break;
 
      case st::Statement::Type::LAW_NONEXECUTABLE:
-		{		
+		{
 		u::ref_ptr<const st::NonexecutableLaw> l = (st::NonexecutableLaw const*)stmt;
 
 			// The body of the causes should contain an action constant
@@ -1142,7 +1110,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 				config()->error("The body of a \"nonexecutable\" law must be an action formula.", &l->body()->beginLoc());
 				ret = false;
 			} else {
-			
+
 				u::ref_ptr<const el::Formula> newhead = new el::NullaryFormula(el::NullaryFormula::Operator::FALSE);
 				u::ref_ptr<const el::Formula> newafter;
 
@@ -1163,7 +1131,7 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 
 			ReferencedString const* varname = newVar(l->head()->symbol()->sort(), context);
 			newhead = new el::AtomicFormula(l->head(), new el::AnonymousVariable(varname, l->head()->endLoc(), l->head()->endLoc()), l->head()->beginLoc(), l->head()->endLoc());
-			
+
 			ret = translateCausalLaw(newhead, NULL, NULL, newhead, NULL, l->where(), preStmts, extraClauses, tmpout);
 
 		}
@@ -1205,10 +1173,10 @@ bool Translator::translate(bcplus::statements::Statement const* stmt) {
 //			translate(l->at(), c, tmpout);
 //			std::string step = tmpout.str();
 //			assertIPart(IPart::EXTERNAL, &step);
-						
+
 
 			ret = bindAndTranslate(l->head(), c, tmpout) && ret;
-				
+
 			HANDLE_PRESTMTS
 			config()->out() << "<- ";
 			config()->out() << "not (" << tmpout.str();
@@ -1234,11 +1202,11 @@ void Translator::nextStmt(Context* c, std::string const& string, IPart::type ipa
 	c->addPreStmt(string, ipart);
 	_stmtcount++;
 }
-			
+
 
 bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* ifbody, el::Formula const* ifcons, el::Formula const* after, el::AtomicFormula const* unless, el::Formula const* where, StatementList* preStmts, ClauseList* extraClauses, std::stringstream& tmpout) {
 
-	
+
 
 	/// The various types of law that this can be
 	struct LawType {
@@ -1258,7 +1226,7 @@ bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* 
 		config()->error("Malformed law: Additive constants can only occur in the heads of \"increments\" laws.", &head->beginLoc());
 		return false;
 	}
-	
+
 	if (head->cmask() & sy::ConstantSymbol::Type::M_EXTERNAL) {
 		config()->error("Malformed law: External constants cannot occur in the heads of any law within the main program.", &head->beginLoc());
 		return false;
@@ -1270,7 +1238,7 @@ bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* 
 
 	// rigid
 	if (head->cmask() & sy::ConstantSymbol::Type::RIGID) {
-		lt = LawType::RIGID;	
+		lt = LawType::RIGID;
 	}
 
 	// rigid constraints
@@ -1304,7 +1272,7 @@ bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* 
 			config()->error("Malformed law: Rigid constants cannot occur in the head of dynamic laws.", &head->beginLoc());
 			return false;
 		}
-	
+
 
 		// Cannot contain non-rigid constants in any other clause
 		if (
@@ -1318,7 +1286,7 @@ bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* 
 
 		break;
 	case LawType::ACTION_DYNAMIC:
-		
+
 		// Cannot contain an 'after' or 'unless' clause
 		if (after || unless) {
 			config()->error("Malformed law: Action dynamic laws cannot contain \"after\" or \"unless\" clauses.", &head->beginLoc());
@@ -1338,7 +1306,7 @@ bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* 
 		}
 		break;
 
-	case LawType::FLUENT_DYNAMIC:	
+	case LawType::FLUENT_DYNAMIC:
 		// actions cannot occur in the if or ifcons body
 		if (
 				(ifbody && (ifbody->cmask() & sy::ConstantSymbol::Type::M_ACTIONS))
@@ -1410,7 +1378,7 @@ bool Translator::translateCausalLaw(el::Formula const* head, el::Formula const* 
 	} else {
 		ts = config()->ts(Configuration::TS::STATIC);
 	}
-	
+
 
 	// translate base
 	if (lt == LawType::RIGID || lt == LawType::STATIC) {
@@ -1490,12 +1458,12 @@ bool Translator::translateIncrementalLaw(el::AtomicFormula const* body, el::Cons
 	translate_contrib(body, head, value, positive, hc, tmpout);
 	tmpout << " <- ";
 
-	bool hasbody = false;	
+	bool hasbody = false;
 	TRANS_CLAUSE(tmpout, hasbody, body, bc, false);
 	TRANS_CLAUSE(tmpout, hasbody, ifbody, bc, false);
 
 	if (unless) {
-		
+
 
 		u::ref_ptr<Context> sc = new Context(config(), Context::Position::DECL, IPart::BASE, preStmts, extraClauses);
 
@@ -1523,7 +1491,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 
 	if (md->translated()) return true;
 	md->translated(true);
-		
+
 	// handle dynamic sort declarations
 	translateSortDeclaration(sym->sort(), c);
 	BOOST_FOREACH(sy::SortSymbol const* sort, *sym) {
@@ -1548,7 +1516,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 	// BC assumes actions are exogenous
 //	if (sym->constType() == sy::ConstantSymbol::Type::ACTION && config()->inputLanguage() == Configuration::Input::BC)
 //		tmpout << sy::ConstantSymbol::Type::cstr(sy::ConstantSymbol::Type::EXOGENOUSACTION);
-//	else 
+//	else
 //		tmpout << sym->constTypeString();
 
 
@@ -1573,7 +1541,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 
 
 	// UEC for the constants...
-		
+
 	const bool action = sym->constType() & sy::ConstantSymbol::Type::M_ACTIONS;
 	const bool fluent = sym->constType() & sy::ConstantSymbol::Type::M_FLUENTS;
 	const bool rigid  = sym->constType() & sy::ConstantSymbol::Type::RIGID;
@@ -1583,7 +1551,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 	// 	ReferencedString const* newvar = newVar(sym->sort(), c, false);
 	// 	u::ref_ptr<Context> bc = c->mkPos(Context::Position::AGGR, IPart::BASE, true);
 	// 	bc = bc->mkTime(config()->ts(Configuration::TS::ZERO));
-		
+
 	// 	tmpout << "<- not 1{ ";
 	// 	ret = translate_eq(sym, *newvar, bc, tmpout) && ret;
 	// 	tmpout << " : ";
@@ -1607,7 +1575,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 	// 	} else {
 	// 		ic = ic->mkTime(config()->ts(Configuration::TS::DYNAMIC));
 	// 	}
-		
+
 	// 	tmpout << "<- not 1{ ";
 	// 	ret = translate_eq(sym, *newvar, ic, tmpout) && ret;
 	// 	tmpout << " : ";
@@ -1635,7 +1603,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 	case sy::ConstantSymbol::Type::ABACTION:
 		{
 			// abActions default to false (or none)...
-			
+
 			u::ref_ptr<Context> ic = c->mkPos(Context::Position::AGGR, IPart::CUMULATIVE, true);
 			ic = ic->mkTime(config()->ts(Configuration::TS::ACTION));
 
@@ -1659,7 +1627,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 
 			break;
 		}
-	
+
 	case sy::ConstantSymbol::Type::EXTERNALFLUENT:
 	case sy::ConstantSymbol::Type::EXTERNALACTION:
 		{
@@ -1694,7 +1662,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 
 				ic = c->mkPos(Context::Position::AGGR, IPart::BASE, false);
 				ic = ic->mkTime(config()->ts(Configuration::TS::ZERO));
-			
+
 				tmpout << "#external ";
 				ret = translate_eq(sym, *newVar(sym->sort(), ic), ic, tmpout) && ret;
 				HANDLE_CLAUSES_5(tmpout, false, true, false, " : ");
@@ -1727,7 +1695,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 
 				// setup shared variables for the parent and attribute
 				u::ref_ptr<ClauseList> args = new ClauseList();
-					
+
 				BOOST_FOREACH(sy::SortSymbol const* sort, *parent) {
 					args->push_back(*newVar(sort, ic));
 				}
@@ -1796,7 +1764,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 			HANDLE_CLAUSES_6(tmpout, false, true, false, " & ", true);
 			nextStmt(c, tmpout.str(), IPart::CUMULATIVE);
 			tmpout.str("");
-			
+
 			tmpout << "<- not 1{contrib_" << *sym->base() << "(";
 			HANDLE_SORT_ARGS_6(sym, c, tmpout, false, true, args);
 			tmpout << "ACTION, VAR, " << *config()->ts(Configuration::TS::ACTION) << ") : ";
@@ -1828,7 +1796,7 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 			tmpout << "ACTION, VAR3, " << *config()->ts(Configuration::TS::ACTION) << ") : additiveconst_action(";
 			translate((sy::ConstantSymbol const*)sym, c, tmpout, true, args);
 			tmpout << ", ACTION) : ";
-			
+
 			translate(symtab()->bsort(sy::SymbolTable::BuiltinSort::ADDITIVE), tmpout);
 			tmpout << "(VAR3) = VAR3 ]";
 
@@ -1849,16 +1817,16 @@ bool Translator::translateConstDeclaration(sy::ConstantSymbol const* sym, Contex
 	case sy::ConstantSymbol::Type::INERTIALFLUENT:
 		{
 			//  inertial fluents are inertial...
-			
+
 			// generate a uniform argument list
 			u::ref_ptr<ClauseList> args = new ClauseList();
 			BOOST_FOREACH(sy::SortSymbol const* sort, *sym) {
 				args->push_back(*newVar(sort, c));
 			}
-			
+
 			u::ref_ptr<Context> hc = c->mkPos(Context::Position::AGGR, IPart::CUMULATIVE, false);
 			hc = hc->mkTime(config()->ts(Configuration::TS::DYNAMIC));
-			
+
 			u::ref_ptr<Context> bc = c->mkPos(Context::Position::AGGR, IPart::CUMULATIVE, false);
 			bc = bc->mkTime(config()->ts(Configuration::TS::ACTION));
 
@@ -1966,8 +1934,8 @@ bool Translator::translate(sy::NumberRangeSymbol const* r, Context* c, std::ostr
 
 }
 
-bool Translator::translateObjectDeclaration(sy::ObjectSymbol const* obj, sy::SortSymbol const* sort, Context* c) {
-	bool ret = true;	
+bool Translator::translateObjectDeclaration(sy::ObjectSymbol const* obj, sy::SortSymbol const* sort, Context* c, bool last) {
+	bool ret = true;
 	std::stringstream tmpout;
 	u::ref_ptr<ClauseList> extraClauses = new ClauseList();
 	u::ref_ptr<Context> subc = c->mkBinds(extraClauses, NULL);
@@ -1975,21 +1943,21 @@ bool Translator::translateObjectDeclaration(sy::ObjectSymbol const* obj, sy::Sor
 	ObjectData* md = obj->metadata<ObjectData>();
 
 	if (translate(obj, subc, tmpout, true)) {
-		assertIPart(IPart::BASE);
-
+		// assertIPart(IPart::BASE);
+		//
 		std::string obj = tmpout.str();
 		tmpout.str("");
-		HANDLE_CLAUSES_4(tmpout, true, true, false);
+		// HANDLE_CLAUSES_4(tmpout, true, true, false);
 		std::string clauses = tmpout.str();
 		tmpout.str("");
 
 		// object(<object>)
-//		if (!md->translated()) {
-//			md->translated(true);
-//			tmpout << "object(" << obj << ").";
-//			nextStmt(subc, tmpout.str(), IPart::BASE);
-//			tmpout.str("");
-//		}
+		// if (!md->translated()) {
+		// 	md->translated(true);
+		// 	tmpout << "object(" << obj << ").";
+		// 	nextStmt(subc, tmpout.str(), IPart::BASE);
+		// 	tmpout.str("");
+		// }
 
 
 		if (!md->translatedSort(sort)) {
@@ -1997,22 +1965,26 @@ bool Translator::translateObjectDeclaration(sy::ObjectSymbol const* obj, sy::Sor
 			md->addTranslatedSort(sort);
 
 			// <sort>(<object>)
+			tmpout <<obj << clauses << "::";
 			translate(sort, tmpout);
-			tmpout << "(" << obj << ")" << clauses;
+			if(!last)
+				tmpout <<";";
+			else
+				tmpout <<".";
 			nextStmt(subc, tmpout.str(), IPart::BASE);
-			tmpout.str("");			
-		
+			tmpout.str("");
+
 
 		}
-						
+
 	} else ret = false;
 
 	return ret;
 
 }
 
-bool Translator::translateRangeDeclaration(sy::NumberRangeSymbol const* range, sy::SortSymbol const* sort, Context* c) {
-	bool ret = true;	
+bool Translator::translateRangeDeclaration(sy::NumberRangeSymbol const* range, sy::SortSymbol const* sort, Context* c, bool last) {
+	bool ret = true;
 	std::stringstream tmpout;
 	u::ref_ptr<ClauseList> extraClauses = new ClauseList();
 	u::ref_ptr<Context> subc = c->mkBinds(extraClauses, NULL);
@@ -2025,11 +1997,11 @@ bool Translator::translateRangeDeclaration(sy::NumberRangeSymbol const* range, s
 	good = translate(range->max(), subc, tmpout) && good;
 
 	if (good) {
-		assertIPart(IPart::BASE);
+		// assertIPart(IPart::BASE);
 
 		std::string obj = tmpout.str();
 		tmpout.str("");
-		HANDLE_CLAUSES_4(tmpout, true, true, false);
+		// HANDLE_CLAUSES_4(tmpout, true, true, false);
 		std::string clauses = tmpout.str();
 		tmpout.str("");
 
@@ -2047,14 +2019,18 @@ bool Translator::translateRangeDeclaration(sy::NumberRangeSymbol const* range, s
 			md->addTranslatedSort(sort);
 
 			// <sort>(<range>)
+			tmpout <<obj << clauses << "::";
 			translate(sort, tmpout);
-			tmpout << "(" << obj << ")" << clauses;
+			if(!last)
+				tmpout <<";";
+			else
+				tmpout <<".";
 			nextStmt(subc, tmpout.str(), IPart::BASE);
-			tmpout.str("");			
-		
+			tmpout.str("");
+
 
 		}
-						
+
 	} else ret = false;
 
 	return ret;
@@ -2093,8 +2069,8 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 // 				translateObjectDeclaration(obj, sort, c);
 
 // 			}
-	
-// 			for (sy::SortSymbol::RangeList::const_iterator it = sort->beginRanges(); 
+
+// 			for (sy::SortSymbol::RangeList::const_iterator it = sort->beginRanges();
 // 					it != sort->endRanges(); it++) {
 // 				translateRangeDeclaration((sy::NumberRangeSymbol const*)it->get(), sort, c);
 
@@ -2110,7 +2086,7 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 // //			tmpout << "(VAR).";
 // //			nextStmt(c, tmpout.str(), IPart::BASE);
 // //			tmpout.str("");
-	
+
 // 			// Hide the extent of this sort...
 // 			// tmpout << "#hide " << sortname << "/1.";
 // 			nextStmt(c, tmpout.str(), IPart::BASE);
@@ -2123,7 +2099,7 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 // 				tmpout << sortname << "(-maxAdditive..maxAdditive).";
 // 				nextStmt(c, tmpout.str(), IPart::BASE);
 // 				tmpout.str("");
-				
+
 // //				tmpout << "sort_object(" << sortname << ", -maxAdditive..maxAdditive).";
 // //				nextStmt(c, tmpout.str(), IPart::BASE);
 // //				tmpout.str("");
@@ -2137,14 +2113,14 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 // 		for (sy::SortSymbol::SortList::const_iterator it = sort->beginSuperSorts(); it != sort->endSuperSorts(); it++) {
 
 // 			if (!md->translatedSubSort(*it)) {
-		
+
 // 				translate(*it, tmpout);
 // 				tmpout << "(VAR) <- " << sortname << "(VAR).";
 // 				nextStmt(c, tmpout.str(), IPart::BASE);
 // 				tmpout.str("");
 
 // 				md->addTranslatedSubSort(*it);
-				
+
 // 				changed = true;
 
 // 				// recurse to ensure the other sort is completely declared
@@ -2165,7 +2141,7 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 // 				tmpout.str("");
 
 // 				md->addTranslatedSuperSort(*it);
-				
+
 // 				changed = true;
 
 // 				// recurse to ensure the other sort is completely declared
@@ -2180,7 +2156,7 @@ bool Translator::translateSortDeclaration(sy::SortSymbol const* sort, Context* c
 }
 
 
-		
+
 
 bool Translator::translate(sy::SortSymbol const* sort, std::ostream& out) {
 
@@ -2222,12 +2198,12 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 		{
 			u::ref_ptr<const el::BinaryFormula> bf = (el::BinaryFormula const*) f;
 			switch (bf->op()) {
-			case el::BinaryFormula::Operator::AND:			
+			case el::BinaryFormula::Operator::AND:
 				translate(bf->left(), c, out);
 				out << " & ";
 				translate(bf->right(), c, out);
 				break;
-		
+
 			case el::BinaryFormula::Operator::OR:
 				bindAndTranslate(bf->left(), c, out);
 				out << " | ";
@@ -2314,7 +2290,7 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 
 		}
 		break;
-		
+
 		// -------------------------------------------------------------------------
 
 	case el::Formula::Type::BINDING:
@@ -2328,7 +2304,7 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 
 			// translate the formula
 			translate(bf->element(), subc, out);
-			
+
 		}
 		break;
 
@@ -2384,7 +2360,7 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 					out << "<unknown_op>";
 					config()->ostream(Verb::ERROR) << "ERROR: INTERNAL ERROR: Encountered an unknown nullary operator." << std::endl;
 					break;
-			
+
 			}
 		}
 		break;
@@ -2395,21 +2371,21 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 		{
 			std::stringstream tmp;
 			u::ref_ptr<const el::CardinalityFormula> cf = (el::CardinalityFormula const*)f;
-			
+
 			// min bound
 			if (cf->min()) translate(cf->min(), c, out);
 			out << "{ ";
-					
+
 
 			// create a substitution for each local variable
 			VariableSubstitutionList subs;
 			BOOST_FOREACH(sy::VariableSymbol const* vs, *cf) {
 				ReferencedString const* newvar = newVar(vs->sort(), c, false);
 				subs[vs] = newvar;
-	
-				
+
+
 			}
-			
+
 
 
 			if (c->pos() == Context::Position::HEAD || cf->formula()->subType() == el::Formula::Type::ATOMIC) {
@@ -2417,8 +2393,8 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 
 					// inline translation
 					subc = subc->mkPos(Context::Position::AGGR);
-					
-				
+
+
 					// translate!
 					bindAndTranslate(cf->formula(), subc, out);
 
@@ -2443,7 +2419,7 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 					translate((*it), tmp);
 				}
 
-					
+
 				if (include_time) {
 					if (!first) {
 						tmp << ", ";
@@ -2466,12 +2442,12 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 				bindAndTranslate(cf->formula(), subc, tmp);
 				tmp << ".";
 				nextStmt(subc, tmp.str(), subc->ipart());
-				
+
 
 
 				// translate the inside of the aggregate as the generated constant using the local variables...
 				tmp.str("");
-				tmp << constname;				
+				tmp << constname;
 				first = true;
 				for (el::Element::VariableSet::const_iterator it = cf->formula()->beginFreeVariables(); it != cf->formula()->endFreeVariables(); it++) {
 					if (!first) {
@@ -2481,12 +2457,12 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 						first = false;
 					}
 
-					VariableSubstitutionList::const_iterator it2 = subs.find(*it); 
+					VariableSubstitutionList::const_iterator it2 = subs.find(*it);
 					std::string const* sub = (it2 != subs.end() ? (it2->second) : NULL);
 					if (sub) tmp << *sub;
 					else translate((*it), tmp);
 				}
-				
+
 				if (include_time) {
 					if (!first) {
 						tmp << ", ";
@@ -2503,7 +2479,7 @@ bool Translator::translate(el::Formula const* f, Context* c, std::ostream& out) 
 
 				out << tmp.str();
 			}
-					
+
 
 			BOOST_FOREACH(VariableSubstitutionList::value_type const& vt, subs) {
 				out << " : ";
@@ -2544,7 +2520,7 @@ bool Translator::translate(el::AtomicFormula const* af, Context* c, std::ostream
 
 				} else if (((void*)((el::Object const*)val.get())->symbol()) ==
 					((void*)(symtab()->bobj(sy::SymbolTable::BuiltinObject::FALSE)))) {
-					
+
 					val = new el::Object((sy::ObjectSymbol const*)symtab()->bobj(sy::SymbolTable::BuiltinObject::TRUE));
 
 				} else {
@@ -2637,7 +2613,7 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 			{
 				u::ref_ptr<const el::Constant> constant = (el::Constant const*)t;
 
-				// TODO: variable bindings in extraClauses should actually be translated to existential operators...				
+				// TODO: variable bindings in extraClauses should actually be translated to existential operators...
 				// translated as a variable with the variable bound later
 				std::stringstream tmp;
 				ReferencedString const* var = newVar(constant->symbol()->sort(), c);
@@ -2657,7 +2633,7 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 				std::stringstream tmpout;
 
 				u::ref_ptr<const el::LuaTerm> lt = (el::LuaTerm const*)t;
-				
+
 				tmpout << "@" << *lt->base();
 				tmpout << "(";
 				HANDLE_ARGS(lt, c, tmpout, false, false);
@@ -2678,7 +2654,7 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 				std::stringstream tmpout;
 
 				u::ref_ptr<const el::PyTerm> lt = (el::PyTerm const*)t;
-				
+
 				tmpout << "@" << *lt->base();
 				tmpout << "(";
 				HANDLE_ARGS(lt, c, tmpout, false, false);
@@ -2702,7 +2678,7 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 			}
 			break;
 
-	
+
 
 			// --------------------------------------------------------
 
@@ -2710,14 +2686,14 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 			{
 				u::ref_ptr<const el::NullaryTerm> nt = (el::NullaryTerm const*)t;
 				switch (nt->op()) {
-				case el::NullaryTerm::Operator::MAXSTEP:		
+				case el::NullaryTerm::Operator::MAXSTEP:
 					switch (config()->inputLanguage()) {
 					case (Configuration::Input::MVPF):
 						out << "maxstep";
 						break;
 					default:
 						if (c->ipart() == IPart::BASE) out << "0";
-						else out << *config()->ts(Configuration::TS::MAXSTEP);	
+						else out << *config()->ts(Configuration::TS::MAXSTEP);
 						break;
 					}
 					break;
@@ -2743,7 +2719,7 @@ bool Translator::translate(el::Term const* t, Context* c, std::ostream& out) {
 
 			// translate the formula
 			translate(bt->element(), subc, out);
-			
+
 		}
 		break;
 
@@ -2766,7 +2742,7 @@ bool Translator::bindAndTranslate(bcplus::elements::Formula const* f, Context* c
 	u::ref_ptr<Context> subc = c->mkBinds(extraClauses, existVars);
 	std::stringstream tmpout;
 
-	
+
 	if (parens && c->pos() != Context::Position::AGGR) tmpout << "(";
 	bool ret = translate(f, subc, tmpout);
 	HANDLE_CLAUSES(tmpout, false, false);
@@ -2814,7 +2790,7 @@ bool Translator::translate_eq(el::Constant const* constant, std::string const& v
 	case sy::ConstantSymbol::Type::EXOGENOUSACTION:
 		out << "occ(eql(";
 		break;
-	} 
+	}
 */
 
 	translate(constant->symbol(), c, out, false);
@@ -2854,7 +2830,7 @@ bool Translator::translate_eq(sy::ConstantSymbol const* constant, std::string co
 	case sy::ConstantSymbol::Type::EXOGENOUSACTION:
 		out << "occ(eql(";
 		break;
-	} 
+	}
 */
 
 	translate(constant, c, out, false);
@@ -2907,7 +2883,7 @@ ReferencedString const* Translator::newVar(sy::SortSymbol const* sort, Context* 
 	BOOST_FOREACH(varinfo_t& vi, l) {
 		if (!vi.used(_stmtcount)) {
 			ret = vi.name();
-	
+
 			// make sure we remember we used this variable for this statement
 			vi.mark(_stmtcount);
 			break;
@@ -2962,7 +2938,7 @@ void Translator::assertIPart(IPart::type ipart, std::string const* step) {
 
 	// case IPart::EXTERNAL:
 	// 	config()->out() << "#external " << (step ? *step : *config()->ts(Configuration::TS::ZERO)) << "." << std::endl;
-	// 	break;	
+	// 	break;
 
 
 	// default:
@@ -2975,5 +2951,3 @@ void Translator::assertIPart(IPart::type ipart, std::string const* step) {
 
 
 }}
-
-

@@ -27,15 +27,15 @@ namespace fs = boost::filesystem;
 namespace u = babb::utils;
 using namespace cplus2asp::cplus2asp_bin;
 
-#define DEBUG 
+#define DEBUG
 /// Main driver program
 int main(int argc, char const** argv) {
 
 	// load configuration information
 	u::ref_ptr<Configuration> conf = new Configuration(argv[0], VERSION);
-	
+
 	switch (conf->load(argc, argv)) {
-	case Configuration::Status::STAT_OK:					
+	case Configuration::Status::STAT_OK:
 		break;
 	case Configuration::Status::STAT_BAD_ARG:
 	case Configuration::Status::STAT_FILE_NOT_FOUND:
@@ -88,15 +88,15 @@ int main(int argc, char const** argv) {
 
 	// setup the translator
 	conf->ostream(Verb::OP) << "Initializing translator..." << std::endl;
-	u::ref_ptr<Translator> t = new Translator(conf, st); 
+	u::ref_ptr<Translator> t = new Translator(conf, st);
 
 	// prologue
 	t->prologue();
-	
+
 	conf->ostream(Verb::OP) << "Parsing..." << std::endl;
 	bcplus::parser::BCParser::ParseType result;
 	bool ret = true;
-	bool initialDone = false;
+	ret = t->initialDeclarations() && ret;
 	do {
 		result = p->parse();
 
@@ -105,14 +105,8 @@ int main(int argc, char const** argv) {
 
 
 		if (result.second) {
-
 			bcplus::statements::Statement* stmt = result.second;
-			// if(!initialDone){
-			// 	ret = t->initialDeclarations(stmt) && ret;
-			// 	initialDone = true;
-			// }
 			ret = t->translate(stmt) && ret;
-
 		}
 
 	} while (result.first != bcplus::parser::BCParser::Status::END_INPUT);
